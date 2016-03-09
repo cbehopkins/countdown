@@ -5,17 +5,21 @@ import (
   "fmt"
   "log"
   "reflect"
-  "runtime"
+  //"runtime"
   "strconv"
+  "sort"
   "flag"
 //  "math/rand"
   "github.com/fighterlyt/permutation"
   "github.com/tonnerre/golang-pretty"
+  "github.com/cheggaaa/pb"
 )
+
 
 var use_mult bool
 var self_test bool
 var seek_short bool
+
 type Number struct {
   // A number consists of 
   Val int // a value
@@ -133,6 +137,7 @@ func (item SolLst) CheckDuplicates () {
 type NumMapAtom struct {   
  a int
  b *Number
+ report bool
 }
 
 type NumMap struct {
@@ -150,11 +155,12 @@ func (item *NumMap) Add (a int, b *Number){
   var atomic NumMapAtom
   atomic.a = a
   atomic.b = b
+  atomic.report = false
   item.input_channel <- atomic; 
 }
 
 
-func (item *NumMap) Merge (a NumMap){
+func (item *NumMap) Merge (a NumMap, report bool ){
 
   for i, v:= range a.nmp{
 
@@ -162,9 +168,11 @@ func (item *NumMap) Merge (a NumMap){
   
     atomic.a = i
     atomic.b = v
+    atomic.report = report
     item.input_channel <- atomic;
   }
 }
+
 
 func (item *NumMap) AddProc (proof_list *SolLst){
 
@@ -173,7 +181,7 @@ func (item *NumMap) AddProc (proof_list *SolLst){
     //fmt.Printf("Debugging NumMap.AddProc, %d\n", bob.a);
     retr, ok := item.nmp[bob.a]
     if (!ok) {
-      //fmt.Printf("Adding value %d\n", bob.a)
+    
       item.nmp[bob.a] = bob.b;
       if (item.TargetSet) {
         if (bob.a == item.Target) {
@@ -254,7 +262,6 @@ func (item *NumMap) CheckDuplicates (proof_list *SolLst){
 
 }
 func (item *NumMap) LastNumMap () {
-  fmt.Println("Closing Channel")
   close(item.input_channel)
   <- item.done_channel
 }
@@ -309,6 +316,7 @@ func make_2_to_1 (a, b *Number, found_values *NumMap) []*Number{
 
   plus_num = new_number(a.Val + b.Val,list, "+",found_values)
   if (use_mult) {mult_num = new_number(a.Val * b.Val,list, "*",found_values)}
+
 
   // REVISIT - generating both of these would give us more intersting numbers quicker
   if (a.Val > b.Val) {
@@ -470,7 +478,6 @@ func permute_n (array_in NumCol, found_values *NumMap, proof_list chan SolLst)  
     v2 := reflect.ValueOf(j).Elem().FieldByName("Val").Addr().Interface().(*int)
     return *v1<*v2
   }
-  fmt.Printf("*** SOP cot: %d\n", runtime.NumGoroutine()) 
   p,err:=permutation.NewPerm(array_in,less)
   if err!=nil{
     fmt.Println(err)
@@ -479,44 +486,70 @@ func permute_n (array_in NumCol, found_values *NumMap, proof_list chan SolLst)  
   var comms_channels []chan SolLst
   comms_channels = make([]chan SolLst, num_procs)
   for i:= range comms_channels {
-    comms_channels[i] = make (chan SolLst,2)
+    comms_channels[i] = make (chan SolLst,200)
   }
   var channel_tokens chan bool
   channel_tokens = make (chan bool, 128)
   for i:= 0; i<1; i++ {
     channel_tokens<-true
   }
-  coallate_chan := make(chan SolLst, 2)
+  coallate_chan := make(chan SolLst, 200)
   coallate_done := make(chan bool, 8)
 
 
+  var map_merge_chan chan NumMap
+  map_merge_chan = make (chan NumMap)
   caller := func () {
    for result,err:=p.Next();err==nil;result,err=p.Next(){
     <- channel_tokens
-    //var bob NumCol;
-    fmt.Printf("%3d permutation: left %d, GoRs %d\n",p.Index()-1,p.Left(), runtime.NumGoroutine()) 
+    //fmt.Printf("%3d permutation: left %3d, GoRs %3d\r",p.Index()-1,p.Left(), runtime.NumGoroutine()) 
     bob, ok := result.(NumCol)
     if (!ok) {
       log.Fatalf("Error Type conversion problem")  
     }
     //pretty.Println(bob)
-    worker := func (it NumCol, fv *NumMap,curr_iten int)  {
+    worker_par := func (it NumCol, fv *NumMap,curr_iten int)  {
+      var arthur NumMap
+      var prfl SolLst;
+      arthur = *NewNumMap(&prfl)  //pass it the proof list so it can auto-check for validity at the en
+      prfl = work_n(it, &arthur)
+      coallate_chan <- prfl
+      arthur.LastNumMap()
+      channel_tokens<-true  // Now we're done, add a token to allow another to start
+      map_merge_chan <- arthur
+      coallate_done <- true
+  
+    }
+    worker_lone := func (it NumCol, fv *NumMap,curr_iten int)  {
       coallate_chan <- work_n(it, fv)
       coallate_done <- true
       channel_tokens<-true // Now we're done, add a token to allow another to start
 
     }
-    go worker(bob,found_values, p.Index()-1)
+    if (true) {go worker_par(bob, found_values, p.Index()-1)}
+    if (false) {go worker_lone (bob,found_values, p.Index()-1)}
    }
   }
+  hold_until_done := make (chan bool)
   go caller()
+  merge_report := false // Turn off reporting of new numbers for first run
 
+  merge_func_worker := func () {
+    for v:= range map_merge_chan {
+     found_values.Merge( v, merge_report)
+     merge_report = true
+    }
+    hold_until_done <- true
+  }
+  if true {go merge_func_worker()}
+  if false {hold_until_done <- true}
   // This little go function waits for all the procs to have a done channel and then closes the channel
   done_control := func () {
     for i:=0; i<num_procs; i++ {
       <- coallate_done
     }
     close (coallate_chan);
+    close (map_merge_chan);
   }
   go done_control();
 
@@ -527,6 +560,8 @@ func permute_n (array_in NumCol, found_values *NumMap, proof_list chan SolLst)  
     close (proof_list)
   }
   go output_merge();
+  <- hold_until_done // don't exit permute until merge_func_worker has finished
+  found_values.LastNumMap()
 }
 
 
@@ -588,8 +623,6 @@ func check_return_list (proof_list SolLst, found_values *NumMap ) {
     // Every value in found_values should be in the list of values returned
     if (!ok) {
       fmt.Printf("%d in Number map, but is not in the proof list, which has %d Items\n",v,len(proof_list))
-      //pretty.Println(found_values)
-      //pretty.Println(proof_list)
       print_proofs(proof_list)
     }
   }
@@ -622,7 +655,91 @@ func print_proofs (proof_list SolLst) {
   fmt.Println("Done printing proofs")
 }
 
-func main() {
+func run_check(work_channel chan [] int) {
+
+ for data := range work_channel {
+  var proof_list SolLst
+  var bob NumCol;
+  found_values := *NewNumMap(&proof_list);  //pass it the proof list so it can auto-check for validity at the end
+  comma := ""
+  fmt.Printf("Processing Permutation: ")
+  for _,v:= range data {
+    fmt.Printf("%s%d",comma,v)
+    comma=","
+    bob.add_num(v,&found_values)
+  }
+  fmt.Printf("\n")
+  return_proofs := make(chan SolLst, 16) 
+
+  proof_list = append(proof_list, &bob);  // Add on the work item that is the source
+
+  go permute_n(bob,&found_values,return_proofs) 
+  cleanup_packer:=0
+  for v:= range return_proofs {
+    if (false) {proof_list = append(proof_list, v...)}
+    cleanup_packer++
+    if (cleanup_packer>1000) {proof_list.CheckDuplicates()}
+  }
+ }
+}
+
+func test_self () {
+  i := []int{100, 75, 50, 25, 10,9,8,7,6,5,4,3,2,1}
+  p,err:=permutation.NewPerm(i,nil) //generate a Permutator
+  if err != nil {
+    fmt.Println(err)
+    return
+  }
+  work_log := make (map [string] bool)
+
+  work_channel := make (chan []int, 2)
+  go run_check(work_channel)
+  var last_pindex int
+  last_pindex=-1
+  running_difference := 1
+  skip_count := 21
+  var  bar_divide int
+  bar_divide = (p.Left()/10000) // we want bar_divide to do about 10000 increments
+  bar := pb.StartNew(p.Left()/bar_divide)
+//  bar.SetRefreshRate(0)
+  top_count :=0
+  bar_count :=0
+  for i,err:=p.Next();err==nil;i,err=p.Next(){
+    if (bar_count<bar_divide) {bar_count++} else {bar.Increment(); bar_count=0} 
+    var subs [] int
+    slice_copy := i.([]int)
+    subs = slice_copy[:6]
+    sort.Ints(subs)
+    var stringy string
+    stringy = fmt.Sprintf("%d,%d,%d,%d,%d,%d", subs[5], subs[4], subs[3], subs[2], subs[1], subs[0])
+    _,ok:= work_log[stringy]
+    if (!ok) {
+      // First of all record we have seen this
+      work_log[stringy] = true
+
+      // For expediting things make sure we check sparsely
+      if (skip_count <20) {
+        skip_count++;
+        continue
+      } 
+      skip_count = 0
+      if (last_pindex>0) {
+        running_difference = p.Index()-1 -last_pindex;
+      }
+      idx := (p.Index()-1)/running_difference
+      lft := p.Left()/running_difference
+      fmt.Printf("\n*** TOP %3d permutation: %3d left %3d, Running Diff  %8d\n",top_count,idx,lft, running_difference)
+      top_count++
+      work_channel <- subs
+      last_pindex = p.Index()-1
+    }
+  }
+  close (work_channel)
+}
+
+
+func main () {
+  test_self ()
 
   var target int
   target = 78
@@ -661,13 +778,13 @@ func main() {
       
     } 
   } else {
-   use_mult = true
-  bob.add_num(  8,found_values)
-  bob.add_num(  9,found_values)
-  bob.add_num( 10,found_values)
-  bob.add_num( 75,found_values)
-  bob.add_num( 25,found_values)
-  bob.add_num(100,found_values)
+    use_mult = true
+    bob.add_num(  8,found_values)
+    bob.add_num(  9,found_values)
+    bob.add_num( 10,found_values)
+    bob.add_num( 75,found_values)
+    bob.add_num( 25,found_values)
+    bob.add_num(100,found_values)
   }
   return_proofs := make(chan SolLst, 16) 
   
@@ -688,11 +805,5 @@ func main() {
       }
     }
   }
-  // Close off the number map queue
-  // also checks the proof_list passed to NewNumMap
-  found_values.LastNumMap()
-
- 
-  found_values.PrintProofs()
 }
 
