@@ -9,7 +9,7 @@ import (
 	"runtime"
 	"sort"
 	"strconv"
-	//  "math/rand"
+
 	"github.com/cheggaaa/pb"
 	"github.com/fighterlyt/permutation"
 	"github.com/tonnerre/golang-pretty"
@@ -327,11 +327,14 @@ func (item *NumMap) generate_number_structs() {
 		//  item.num_struct_queue <- ttmp
 		//}
 		var tmp_var Number
+		//var_array := make([]Number, 1024)
+		//for _, itm := range var_array {
 		item.num_struct_queue <- &tmp_var
+		//}
 	}
 }
 
-func make_2_to_1(a, b *Number, found_values *NumMap) []*Number {
+func make_2_to_1(list []*Number, found_values *NumMap) []*Number {
 	// This is (conceptually) returning a list of numbers
 	// That can be generated from 2 input numbers
 	// organised in such a way that we know how we created them
@@ -340,9 +343,8 @@ func make_2_to_1(a, b *Number, found_values *NumMap) []*Number {
 	var mult_num *Number
 	var minu_num *Number
 
-	var list []*Number
-
-	list = append(list, a, b)
+	a := list[0].Val
+	b := list[1].Val
 	var array_count int
 	if use_mult {
 		array_count = 3
@@ -350,35 +352,29 @@ func make_2_to_1(a, b *Number, found_values *NumMap) []*Number {
 		array_count = 2
 	}
 
-	//tmp_a := a.Val
-	//tmp_b := b.Val
-	//fmt.Println("a and b", tmp_a,tmp_b);
-
 	ret_list = make([]*Number, array_count, 4)
-	plus_num = new_number(a.Val+b.Val, list, "+", found_values, 1)
+	plus_num = new_number(a+b, list, "+", found_values, 1)
 	ret_list[0] = plus_num
 	if use_mult {
-		mult_num = new_number(a.Val*b.Val, list, "*", found_values, 2)
+		mult_num = new_number(a*b, list, "*", found_values, 2)
 		ret_list[2] = mult_num
 	}
 
-	// REVISIT - generating both of these would give us more intersting numbers quicker
-	if a.Val > b.Val {
-		minu_num = new_number(a.Val-b.Val, list, "-", found_values, 1)
+	if a > b {
+		minu_num = new_number(a-b, list, "-", found_values, 1)
 		ret_list[1] = minu_num
-		if (b.Val > 0) && ((a.Val % b.Val) == 0) {
-			tmp_div := new_number((a.Val / b.Val), list, "/", found_values, 3)
+		if (b > 0) && ((a % b) == 0) {
+			tmp_div := new_number((a / b), list, "/", found_values, 3)
 			ret_list = append(ret_list, tmp_div)
 		}
 	} else {
-		minu_num = new_number(b.Val-a.Val, list, "--", found_values, 1)
+		minu_num = new_number(b-a, list, "--", found_values, 1)
 		ret_list[1] = minu_num
-		if (a.Val > 0) && ((b.Val % a.Val) == 0) {
-			tmp_div := new_number((b.Val / a.Val), list, "\\", found_values, 3)
+		if (a > 0) && ((b % a) == 0) {
+			tmp_div := new_number((b / a), list, "\\", found_values, 3)
 			ret_list = append(ret_list, tmp_div)
 		}
 	}
-	//ret_list =  append (ret_list,minu_num)
 	//fmt.Printf("Values are: %d,%d\n",plus_num.Val,minu_num.Val)
 	return ret_list
 }
@@ -448,15 +444,15 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 		ret_list = append(ret_list, &array_in)
 		return ret_list
 	} else if len_array_in == 2 {
-		var a, b *Number
-		a = array_in[0]
-		b = array_in[1]
+		//var a, b *Number
+		//a = array_in[0]
+		//b = array_in[1]
 		var tmp_list NumCol
 
 		//tmp_a := a.Val
 		//tmp_b := b.Val
 		//fmt.Println("a nd b", tmp_a,tmp_b);
-		tmp_list = make_2_to_1(a, b, found_values)
+		tmp_list = make_2_to_1(array_in[0:2], found_values)
 		ret_list = append(ret_list, &tmp_list, &array_in)
 		return ret_list
 	}
@@ -509,7 +505,9 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 				//tmp_a := a_num.Val
 				//tmp_b := b_num.Val
 				//fmt.Println("a nd b", tmp_a,tmp_b);
-				product_of_2 = make_2_to_1(a_num, b_num, found_values)
+				var list []*Number
+				list = append(list, a_num, b_num)
+				product_of_2 = make_2_to_1(list, found_values)
 				ret_list = append(ret_list, &product_of_2)
 			}
 		}
@@ -593,7 +591,7 @@ func permute_n(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 			if lone_map {
 				go worker_lone(bob, found_values, p.Index()-1)
 			}
-			
+
 		}
 	}
 	hold_until_done := make(chan bool)
