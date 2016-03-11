@@ -3,7 +3,7 @@ package cnt_slv
 import (
 	"fmt"
 	"log"
-	"os"
+	///	"os"
 	"reflect"
 	"runtime"
 	"sort"
@@ -141,6 +141,7 @@ type NumMap struct {
 	input_channel    chan NumMapAtom
 	done_channel     chan bool
 	num_struct_queue chan *Number
+	Solved           bool
 	SeekShort        bool
 	UseMult          bool
 	SelfTest         bool
@@ -186,7 +187,11 @@ func (item *NumMap) AddProc(proof_list *SolLst) {
 					proof_string := bob.b.ProveIt()
 					fmt.Printf("Value %d, = %s, Proof Len is %d, Difficulty is %d\n", bob.b.Val, proof_string, bob.b.ProofLen(), bob.b.difficulty)
 					if !item.SeekShort {
-						os.Exit(0)
+						item.Solved = true
+						//os.Exit(0)
+						//item.CheckDuplicates(proof_list)
+						//item.done_channel <- true
+						//return
 					}
 				}
 			}
@@ -437,7 +442,9 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 	//    fmt.Printf("%d,",value);
 	//  }
 	//  fmt.Printf("\n");
-
+	if found_values.Solved {
+		return ret_list
+	}
 	if len_array_in == 1 {
 		ret_list = append(ret_list, &array_in)
 		return ret_list
@@ -499,6 +506,9 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 		// Now Cross work then
 		for _, a_num := range list_of_1_a {
 			for _, b_num := range list_of_1_b {
+				if found_values.Solved {
+					return ret_list
+				}
 				var product_of_2 NumCol
 				//tmp_a := a_num.Val
 				//tmp_b := b_num.Val
@@ -517,7 +527,7 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 	return ret_list
 }
 
-func Permute_n(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
+func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 	fmt.Println("Start Permute")
 	less := func(i, j interface{}) bool {
 		//fmt.Println("Less func")
@@ -529,10 +539,10 @@ func Permute_n(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 	if err != nil {
 		fmt.Println(err)
 	}
-	num_procs := p.Left()
-	fmt.Println("Num permutes:", num_procs)
+	num_permutations := p.Left()
+	fmt.Println("Num permutes:", num_permutations)
 	var comms_channels []chan SolLst
-	comms_channels = make([]chan SolLst, num_procs)
+	comms_channels = make([]chan SolLst, num_permutations)
 	for i := range comms_channels {
 		comms_channels[i] = make(chan SolLst, 200)
 	}
@@ -550,13 +560,13 @@ func Permute_n(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 	caller := func() {
 		fmt.Println("Inside Caller")
 		for result, err := p.Next(); err == nil; result, err = p.Next() {
+
 			<-channel_tokens
 			fmt.Printf("%3d permutation: left %3d, GoRs %3d\r", p.Index()-1, p.Left(), runtime.NumGoroutine())
 			bob, ok := result.(NumCol)
 			if !ok {
 				log.Fatalf("Error Type conversion problem")
 			}
-			//pretty.Println(bob)
 			worker_par := func(it NumCol, fv *NumMap, curr_iten int) {
 				// This is the parallel worker function
 				// It creates a new number map, populates it by working the incoming number set
@@ -564,6 +574,11 @@ func Permute_n(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 				// This is useful if we have more processes than we know what to do with
 				var arthur NumMap
 				var prfl SolLst
+				if found_values.Solved {
+					coallate_done <- true
+					channel_tokens <- true
+					return
+				}
 				arthur = *NewNumMap(&prfl) //pass it the proof list so it can auto-check for validity at the en
 				prfl = work_n(it, &arthur)
 				coallate_chan <- prfl
@@ -574,8 +589,12 @@ func Permute_n(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 
 			}
 			worker_lone := func(it NumCol, fv *NumMap, curr_iten int) {
+				if found_values.Solved {
+					coallate_done <- true
+					channel_tokens <- true
+					return
+				}
 				coallate_chan <- work_n(it, fv)
-
 				//fmt.Println("cdone send");
 				coallate_done <- true
 				//fmt.Println("cdone sent");
@@ -610,9 +629,13 @@ func Permute_n(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 	}
 	// This little go function waits for all the procs to have a done channel and then closes the channel
 	done_control := func() {
-		for i := 0; i < num_procs; i++ {
+		for i := 0; i < num_permutations; i++ {
+
 			//fmt.Println("removing token");
 			<-coallate_done
+			if found_values.Solved {
+				break
+			}
 			//fmt.Println("removed token");
 		}
 		close(coallate_chan)
@@ -628,6 +651,7 @@ func Permute_n(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 		for v := range coallate_chan {
 			proof_list <- v
 		}
+		fmt.Println("Closing proof list")
 		close(proof_list)
 	}
 	go output_merge()
@@ -675,7 +699,11 @@ func expand_n(array_a NumCol) []SolLst {
 
 func check_return_list(proof_list SolLst, found_values *NumMap) {
 	value_check := make(map[int]int)
-
+	if found_values.TargetSet && !found_values.SeekShort && found_values.Solved {
+		// When we've aborted early because we found the proof
+		// the proof list is incomplete
+		return
+	}
 	for _, v := range proof_list {
 		// v is *NumLst
 		for _, w := range *v {
@@ -745,7 +773,7 @@ func run_check(work_channel chan []int) {
 
 		proof_list = append(proof_list, &bob) // Add on the work item that is the source
 
-		go Permute_n(bob, &found_values, return_proofs)
+		go PermuteN(bob, &found_values, return_proofs)
 		cleanup_packer := 0
 		for v := range return_proofs {
 			if false {

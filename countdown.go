@@ -51,13 +51,7 @@ func main() {
 
 		}
 	} else {
-		found_values.UseMult = true
-		bob.AddNum(8, found_values)
-		bob.AddNum(9, found_values)
-		bob.AddNum(10, found_values)
-		bob.AddNum(75, found_values)
-		bob.AddNum(25, found_values)
-		bob.AddNum(100, found_values)
+		log.Fatal("No target specified")
 	}
 	return_proofs := make(chan cnt_slv.SolLst, 16)
 
@@ -67,7 +61,7 @@ func main() {
 
 	proof_list = append(proof_list, &bob) // Add on the work item that is the source
 
-	go cnt_slv.Permute_n(bob, found_values, return_proofs)
+	go cnt_slv.PermuteN(bob, found_values, return_proofs)
 	cleanup_packer := 0
 	for v := range return_proofs {
 		if found_values.SelfTest {
@@ -80,4 +74,5 @@ func main() {
 			}
 		}
 	}
+	// TBD on seeks option add in tidy printing of the final solution
 }
