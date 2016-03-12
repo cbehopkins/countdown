@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
+	"runtime/pprof"
 	"strconv"
 
 	"github.com/cbehopkins/countdown/cnt_slv"
@@ -11,6 +13,12 @@ import (
 
 func main() {
 	//test_self ()
+	f, err := os.Create("fred.prf")
+	if err != nil {
+		log.Fatal(err)
+	}
+	pprof.StartCPUProfile(f)
+	defer pprof.StopCPUProfile()
 
 	var target int
 	target = 78
