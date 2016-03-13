@@ -70,7 +70,8 @@ func (item NumCol) GetNumCol() string {
 	comma := ""
 	ret_str = ""
 	for _, v := range item {
-		ret_str = fmt.Sprintf("%s%s%d", ret_str, comma, v.Val)
+		//ret_str = fmt.Sprintf("%s%s%d", ret_str, comma, v.Val)
+		ret_str = ret_str + comma + fmt.Sprintf("%d", v.Val)
 		comma = ","
 	}
 	return ret_str
@@ -166,10 +167,10 @@ func make_2_to_1(list []*Number, found_values *NumMap) []*Number {
 
 func new_number(input_a int, input_b []*Number, operation string, found_values *NumMap, difficult int) *Number {
 
-	var new_num *Number
-	new_num = <-found_values.num_struct_queue
+	var new_num Number
+	//new_num = <-found_values.num_struct_queue
 	new_num.Val = input_a
-	found_values.Add(input_a, new_num)
+	found_values.Add(input_a, &new_num)
 
 	new_num.list = input_b
 	new_num.operation = operation
@@ -179,5 +180,5 @@ func new_number(input_a int, input_b []*Number, operation string, found_values *
 		new_num.difficulty = difficult
 	}
 	//fmt.Printf("There are %d elements in the input_a list\n", len(input_a.list))
-	return new_num
+	return &new_num
 }

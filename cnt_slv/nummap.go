@@ -23,6 +23,20 @@ type NumMap struct {
 	SelfTest         bool
 }
 
+func NewNumMap(proof_list *SolLst) *NumMap {
+	p := new(NumMap)
+	p.nmp = make(map[int]*Number)
+	p.input_channel = make(chan NumMapAtom, 1000)
+	p.done_channel = make(chan bool)
+	p.TargetSet = false
+
+	go p.AddProc(proof_list)
+
+	p.num_struct_queue = make(chan *Number, 1024)
+	//go p.generate_number_structs()
+
+	return p
+}
 func (item *NumMap) Add(a int, b *Number) {
 
 	//fmt.Printf("Debugging NumMap.Add, %d\n", a);
@@ -77,7 +91,7 @@ func (item *NumMap) AddProc(proof_list *SolLst) {
 
 				// In seek short mode, then update when it has a shorter proof
 				item.nmp[bob.a] = bob.b
-				fmt.Printf("Value %d, = %s, Proof Len is %d, Difficulty is %d\n", bob.b.Val, bob.b.ProveIt(), bob.b.ProofLen(), bob.b.difficulty)
+				//fmt.Printf("Value %d, = %s, Proof Len is %d, Difficulty is %d\n", bob.b.Val, bob.b.ProveIt(), bob.b.ProofLen(), bob.b.difficulty)
 			}
 			//if item.TargetSet && (bob.a == item.Target) {
 			//	fmt.Printf("Value %d, = %s, Proof Len is %d, Difficulty is %d\n", bob.b.Val, bob.b.ProveIt(), bob.b.ProofLen(), bob.b.difficulty)
@@ -101,24 +115,7 @@ func (item *NumMap) GetVals() []int {
 	}
 	return ret_list
 }
-func NewNumMap(proof_list *SolLst) *NumMap {
-	p := new(NumMap)
-	fred := make(map[int]*Number)
-	p.nmp = fred
-	bob := make(chan NumMapAtom, 1000)
-	p.input_channel = bob
-	dc := make(chan bool)
-	p.done_channel = dc
-	p.TargetSet = false
 
-	go p.AddProc(proof_list)
-
-	tmp := make(chan *Number, 1024)
-	p.num_struct_queue = tmp
-	go p.generate_number_structs()
-
-	return p
-}
 func (item *NumMap) CheckDuplicates(proof_list *SolLst) {
 	set_list_map := make(map[string]NumCol)
 	//fmt.Printf("Checking for duplicates in Proof\n");
@@ -126,7 +123,7 @@ func (item *NumMap) CheckDuplicates(proof_list *SolLst) {
 	tpp = *proof_list
 	var del_queue []int
 
-	for i := 0; i < len(*proof_list); i++ {
+	for i := 0; i < len(tpp); i++ {
 		v := tpp[i]
 		var t0 NumCol
 		t0 = *v

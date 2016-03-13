@@ -29,8 +29,12 @@ func NewTestSet(target int, seld ...int) *testset {
 	return item
 }
 func init_many() []testset {
-	ret_lst := make([]testset, 1)
+	ret_lst := make([]testset, 4)
 	ret_lst[0] = *NewTestSet(78, 8, 9, 10, 75, 25, 100)
+	ret_lst[1] = *NewTestSet(833, 50, 3, 3, 1, 10, 7)
+	ret_lst[2] = *NewTestSet(540, 3, 4, 7, 2, 3, 8)
+	ret_lst[3] = *NewTestSet(321, 75, 1, 10, 7, 4, 2)
+
 	return ret_lst
 }
 

@@ -3,11 +3,11 @@ package cnt_slv
 import (
 	"fmt"
 	"log"
-	"reflect"
+	//	"reflect"
 	"runtime"
-	"sort"
+	//"sort"
 
-	"github.com/cheggaaa/pb"
+	//"github.com/cheggaaa/pb"
 	"github.com/fighterlyt/permutation"
 	"github.com/tonnerre/golang-pretty"
 )
@@ -96,11 +96,13 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 		// Now we've extracted one work item,
 		// so conceptually  here we have {{2},{3,4,5,6}} or perhaps {{2},{3,4}} or {{2,3},{4,5}}
 
-		// Sanity check for programming errors
-		work_unit_length := len(work_unit)
-		if work_unit_length != 2 {
-			pretty.Println(work_list)
-			log.Fatalf("Invalid work unit length, %d", work_unit_length)
+		if found_values.SelfTest {
+			// Sanity check for programming errors
+			work_unit_length := len(work_unit)
+			if work_unit_length != 2 {
+				pretty.Println(work_list)
+				log.Fatalf("Invalid work unit length, %d", work_unit_length)
+			}
 		}
 		var unit_a, unit_b *NumCol
 		unit_a = work_unit[0]
@@ -126,8 +128,9 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 				//tmp_a := a_num.Val
 				//tmp_b := b_num.Val
 				//fmt.Println("a nd b", tmp_a,tmp_b);
-				var list []*Number
-				list = append(list, a_num, b_num)
+				list := make([]*Number, 2)
+				list[0] = a_num
+				list[1] = b_num
 				product_of_2 = make_2_to_1(list, found_values)
 				ret_list = append(ret_list, &product_of_2)
 			}
@@ -136,7 +139,7 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 		ret_list = append(ret_list, work_unit...)
 	}
 	// This adds about 10% to the run time, but reduces memory to 1/5th
-	ret_list.CheckDuplicates()
+	//ret_list.CheckDuplicates()
 	return ret_list
 }
 
@@ -144,9 +147,11 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 	fmt.Println("Start Permute")
 	less := func(i, j interface{}) bool {
 		//fmt.Println("Less func")
-		v1 := reflect.ValueOf(i).Elem().FieldByName("Val").Addr().Interface().(*int)
-		v2 := reflect.ValueOf(j).Elem().FieldByName("Val").Addr().Interface().(*int)
-		return *v1 < *v2
+		//v1 := reflect.ValueOf(i).Elem().FieldByName("Val").Addr().Interface().(*int)
+		//v2 := reflect.ValueOf(j).Elem().FieldByName("Val").Addr().Interface().(*int)
+		v1 := i.(*Number).Val
+		v2 := j.(*Number).Val
+		return v1 < v2
 	}
 	p, err := permutation.NewPerm(array_in, less)
 	if err != nil {
@@ -161,7 +166,7 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 	}
 	var channel_tokens chan bool
 	channel_tokens = make(chan bool, 128)
-	for i := 0; i < 1; i++ {
+	for i := 0; i < 16; i++ {
 		//fmt.Println("Adding token");
 		channel_tokens <- true
 	}
@@ -368,93 +373,93 @@ func print_proofs(proof_list SolLst) {
 	fmt.Println("Done printing proofs")
 }
 
-func run_check(work_channel chan []int) {
+//func run_check(work_channel chan []int) {
 
-	for data := range work_channel {
-		var proof_list SolLst
-		var bob NumCol
-		found_values := *NewNumMap(&proof_list) //pass it the proof list so it can auto-check for validity at the end
-		comma := ""
-		//fmt.Printf("Processing Permutation: ")
-		for _, v := range data {
-			fmt.Printf("%s%d", comma, v)
-			comma = ","
-			bob.AddNum(v, &found_values)
-		}
-		fmt.Printf("\n")
-		return_proofs := make(chan SolLst, 16)
+//	for data := range work_channel {
+//		var proof_list SolLst
+//		var bob NumCol
+//		found_values := *NewNumMap(&proof_list) //pass it the proof list so it can auto-check for validity at the end
+//		comma := ""
+//		//fmt.Printf("Processing Permutation: ")
+//		for _, v := range data {
+//			fmt.Printf("%s%d", comma, v)
+//			comma = ","
+//			bob.AddNum(v, &found_values)
+//		}
+//		fmt.Printf("\n")
+//		return_proofs := make(chan SolLst, 16)
 
-		proof_list = append(proof_list, &bob) // Add on the work item that is the source
+//		proof_list = append(proof_list, &bob) // Add on the work item that is the source
 
-		go PermuteN(bob, &found_values, return_proofs)
-		cleanup_packer := 0
-		for v := range return_proofs {
-			if false {
-				proof_list = append(proof_list, v...)
-			}
-			cleanup_packer++
-			if cleanup_packer > 1000 {
-				proof_list.CheckDuplicates()
-			}
-		}
-	}
-}
+//		go PermuteN(bob, &found_values, return_proofs)
+//		cleanup_packer := 0
+//		for v := range return_proofs {
+//			if false {
+//				proof_list = append(proof_list, v...)
+//			}
+//			cleanup_packer++
+//			if cleanup_packer > 1000 {
+//				proof_list.CheckDuplicates()
+//			}
+//		}
+//	}
+//}
 
-func test_self() {
-	i := []int{100, 75, 50, 25, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
-	p, err := permutation.NewPerm(i, nil) //generate a Permutator
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	work_log := make(map[string]bool)
+//func test_self() {
+//	i := []int{100, 75, 50, 25, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
+//	p, err := permutation.NewPerm(i, nil) //generate a Permutator
+//	if err != nil {
+//		fmt.Println(err)
+//		return
+//	}
+//	work_log := make(map[string]bool)
 
-	work_channel := make(chan []int, 2)
-	go run_check(work_channel)
-	var last_pindex int
-	last_pindex = -1
-	running_difference := 1
-	skip_count := 21
-	var bar_divide int
-	bar_divide = (p.Left() / 10000) // we want bar_divide to do about 10000 increments
-	bar := pb.StartNew(p.Left() / bar_divide)
-	//  bar.SetRefreshRate(0)
-	top_count := 0
-	bar_count := 0
-	for i, err := p.Next(); err == nil; i, err = p.Next() {
-		if bar_count < bar_divide {
-			bar_count++
-		} else {
-			bar.Increment()
-			bar_count = 0
-		}
-		var subs []int
-		slice_copy := i.([]int)
-		subs = slice_copy[:6]
-		sort.Ints(subs)
-		var stringy string
-		stringy = fmt.Sprintf("%d,%d,%d,%d,%d,%d", subs[5], subs[4], subs[3], subs[2], subs[1], subs[0])
-		_, ok := work_log[stringy]
-		if !ok {
-			// First of all record we have seen this
-			work_log[stringy] = true
+//	work_channel := make(chan []int, 2)
+//	go run_check(work_channel)
+//	var last_pindex int
+//	last_pindex = -1
+//	running_difference := 1
+//	skip_count := 21
+//	var bar_divide int
+//	bar_divide = (p.Left() / 10000) // we want bar_divide to do about 10000 increments
+//	bar := pb.StartNew(p.Left() / bar_divide)
+//	//  bar.SetRefreshRate(0)
+//	top_count := 0
+//	bar_count := 0
+//	for i, err := p.Next(); err == nil; i, err = p.Next() {
+//		if bar_count < bar_divide {
+//			bar_count++
+//		} else {
+//			bar.Increment()
+//			bar_count = 0
+//		}
+//		var subs []int
+//		slice_copy := i.([]int)
+//		subs = slice_copy[:6]
+//		sort.Ints(subs)
+//		var stringy string
+//		stringy = fmt.Sprintf("%d,%d,%d,%d,%d,%d", subs[5], subs[4], subs[3], subs[2], subs[1], subs[0])
+//		_, ok := work_log[stringy]
+//		if !ok {
+//			// First of all record we have seen this
+//			work_log[stringy] = true
 
-			// For expediting things make sure we check sparsely
-			if skip_count < 20 {
-				skip_count++
-				continue
-			}
-			skip_count = 0
-			if last_pindex > 0 {
-				running_difference = p.Index() - 1 - last_pindex
-			}
-			idx := (p.Index() - 1) / running_difference
-			lft := p.Left() / running_difference
-			fmt.Printf("\n*** TOP %3d permutation: %3d left %3d, Running Diff  %8d\n", top_count, idx, lft, running_difference)
-			top_count++
-			work_channel <- subs
-			last_pindex = p.Index() - 1
-		}
-	}
-	close(work_channel)
-}
+//			// For expediting things make sure we check sparsely
+//			if skip_count < 20 {
+//				skip_count++
+//				continue
+//			}
+//			skip_count = 0
+//			if last_pindex > 0 {
+//				running_difference = p.Index() - 1 - last_pindex
+//			}
+//			idx := (p.Index() - 1) / running_difference
+//			lft := p.Left() / running_difference
+//			fmt.Printf("\n*** TOP %3d permutation: %3d left %3d, Running Diff  %8d\n", top_count, idx, lft, running_difference)
+//			top_count++
+//			work_channel <- subs
+//			last_pindex = p.Index() - 1
+//		}
+//	}
+//	close(work_channel)
+//}
