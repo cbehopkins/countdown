@@ -2,6 +2,7 @@ package cnt_slv
 
 import (
 	"fmt"
+	"sync"
 )
 
 type NumMapAtom struct {
@@ -14,7 +15,8 @@ type NumMap struct {
 	nmp              map[int]*Number
 	TargetSet        bool
 	Target           int
-	input_channel    chan NumMapAtom
+        input_channel    chan NumMapAtom
+	input_channel_array    chan []NumMapAtom
 	done_channel     chan bool
 	num_struct_queue chan *Number
 	Solved           bool
@@ -26,7 +28,8 @@ type NumMap struct {
 func NewNumMap(proof_list *SolLst) *NumMap {
 	p := new(NumMap)
 	p.nmp = make(map[int]*Number)
-	p.input_channel = make(chan NumMapAtom, 1000)
+        p.input_channel = make(chan NumMapAtom, 1000)                              
+	p.input_channel_array = make(chan []NumMapAtom, 100)
 	p.done_channel = make(chan bool)
 	p.TargetSet = false
 
@@ -38,16 +41,45 @@ func NewNumMap(proof_list *SolLst) *NumMap {
 	return p
 }
 func (item *NumMap) Add(a int, b *Number) {
-
-	//fmt.Printf("Debugging NumMap.Add, %d\n", a);
-	//pretty.Println (item)
 	var atomic NumMapAtom
 	atomic.a = a
 	atomic.b = b
 	atomic.report = false
 	item.input_channel <- atomic
 }
+func (item *NumMap) AddMany( b ...*Number) {
+	arr := make([]NumMapAtom, len(b))
+	for i,c := range b {
+	        var atomic NumMapAtom
+        	atomic.a = c.Val
+	        atomic.b = c
+        	atomic.report = false
+		arr[i] = atomic
+	}
+	item.input_channel_array <- arr
+} 
 
+func (item *NumMap) AddSol( a SolLst) {
+	arr_len := 0
+        for _,b := range a {
+		arr_len = arr_len + len(*b)
+        }
+
+        arr := make([]NumMapAtom,arr_len)
+	i:=0
+	for _,b := range a {
+	        for _,c := range *b {
+        	        var atomic NumMapAtom                                                                                                            
+                	atomic.a = c.Val                                                                                                                 
+	                atomic.b = c                                                                                                                     
+        	        atomic.report = false                                                                                                            
+                	//arr = append(arr,atomic)                                                                                                    
+			arr[i] = atomic
+			i++
+	        }
+	}
+        item.input_channel_array <- arr                                                                                                          
+} 
 func (item *NumMap) Merge(a NumMap, report bool) {
 
 	for i, v := range a.nmp {
@@ -62,10 +94,7 @@ func (item *NumMap) Merge(a NumMap, report bool) {
 }
 
 func (item *NumMap) AddProc(proof_list *SolLst) {
-
-	//pretty.Println (item)
-	for bob := range item.input_channel {
-		//fmt.Printf("Debugging NumMap.AddProc, %d\n", bob.a);
+	add_item := func (bob NumMapAtom) {
 		retr, ok := item.nmp[bob.a]
 		if !ok {
 
@@ -98,6 +127,28 @@ func (item *NumMap) AddProc(proof_list *SolLst) {
 			//}
 		}
 	}
+	waiter := new(sync.WaitGroup)
+	waiter.Add(2)
+	var local_lock sync.Mutex
+	go func () {
+		for fred := range item.input_channel_array{                                                                                                    
+			local_lock.Lock()
+			for _,bob := range fred {
+                		add_item(bob)          
+			}                                                                                                           
+  			local_lock.Unlock() 
+	        }
+		waiter.Done()
+	} ()
+	go func () {
+		for bob := range item.input_channel {
+			local_lock.Lock()
+			add_item(bob)
+			local_lock.Unlock()
+		}
+		waiter.Done()
+	} ()
+	waiter.Wait()
 	if item.SelfTest {
 		check_return_list(*proof_list, item)
 	}

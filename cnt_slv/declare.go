@@ -126,41 +126,56 @@ func make_2_to_1(list []*Number, found_values *NumMap) []*Number {
 	// organised in such a way that we know how we created them
 	var ret_list []*Number
 	var plus_num *Number
-	var mult_num *Number
-	var minu_num *Number
+	//var mult_num *Number
+	//var minu_num *Number
 
 	a := list[0].Val
 	b := list[1].Val
-	var array_count int
-	if found_values.UseMult {
-		array_count = 3
+	// The thing that slows us down isn't calculations, but channel communications of generating new numbers
+	// and garbage collecting the pointless ones
+	// So it's worth spending some CPU working out the useless calculations
+	
+	a1 := (a==1)
+	b1 := (b==1)
+	a_gt_b := (a>b)
+	// If a-b=a then no pount calculating a-b
+	var no_sub bool
+	if a_gt_b {
+		no_sub = (a-b==a)
 	} else {
-		array_count = 2
+		no_sub = (b-a==b)
 	}
+	
 
-	ret_list = make([]*Number, array_count, 4)
+	ret_list = make([]*Number, 1, 4)
 	plus_num = new_number(a+b, list, "+", found_values, 1)
 	ret_list[0] = plus_num
+
 	if found_values.UseMult {
-		mult_num = new_number(a*b, list, "*", found_values, 2)
-		ret_list[2] = mult_num
+		mult_num := new_number(a*b, list, "*", found_values, 2)
+		ret_list = append(ret_list, mult_num)
 	}
 
-	if a > b {
-		minu_num = new_number(a-b, list, "-", found_values, 1)
-		ret_list[1] = minu_num
-		if (b > 0) && ((a % b) == 0) {
+	if a_gt_b {
+		if !no_sub {
+			minu_num := new_number(a-b, list, "-", found_values, 1)
+			ret_list = append(ret_list,minu_num)
+		}
+		if (b > 0) && (!b1) && ((a % b) == 0) {
 			tmp_div := new_number((a / b), list, "/", found_values, 3)
 			ret_list = append(ret_list, tmp_div)
 		}
 	} else {
-		minu_num = new_number(b-a, list, "--", found_values, 1)
-		ret_list[1] = minu_num
-		if (a > 0) && ((b % a) == 0) {
+		if !no_sub {
+			minu_num := new_number(b-a, list, "--", found_values, 1)
+			ret_list = append(ret_list,minu_num)
+		}
+		if (a > 0) && (!a1) && ((b % a) == 0) {
 			tmp_div := new_number((b / a), list, "\\", found_values, 3)
 			ret_list = append(ret_list, tmp_div)
 		}
 	}
+	//found_values.AddMany(ret_list...)
 	//fmt.Printf("Values are: %d,%d\n",plus_num.Val,minu_num.Val)
 	return ret_list
 }
@@ -170,7 +185,7 @@ func new_number(input_a int, input_b []*Number, operation string, found_values *
 	var new_num Number
 	//new_num = <-found_values.num_struct_queue
 	new_num.Val = input_a
-	found_values.Add(input_a, &new_num)
+	//found_values.AddMany(&new_num)
 
 	new_num.list = input_b
 	new_num.operation = operation
