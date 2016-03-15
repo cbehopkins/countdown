@@ -2,6 +2,7 @@ package cnt_slv
 
 import (
 	"fmt"
+	"sort"
 )
 
 var lone_map = true
@@ -69,9 +70,18 @@ func (item NumCol) GetNumCol() string {
 	var ret_str string
 	comma := ""
 	ret_str = ""
-	for _, v := range item {
+	tmp_array := make([]int,len(item) )
+
+	// Get the numbers, then sort them, then print theM
+	for i, v := range item {
+		tmp_array[i] = v.Val
+	}
+	//fmt.Println("Before:",tmp_array)
+	sort.Ints(tmp_array)
+	//fmt.Println("After:",tmp_array)
+	for _,v := range tmp_array {
 		//ret_str = fmt.Sprintf("%s%s%d", ret_str, comma, v.Val)
-		ret_str = ret_str + comma + fmt.Sprintf("%d", v.Val)
+		ret_str = ret_str + comma + fmt.Sprintf("%d", v)
 		comma = ","
 	}
 	return ret_str
@@ -79,7 +89,8 @@ func (item NumCol) GetNumCol() string {
 func (bob *NumCol) AddNum(input_num int, found_values *NumMap) {
 	var empty_list NumCol
 
-	a := new_number(input_num, empty_list, "I", found_values, 0)
+	a := new_number(input_num, empty_list, "I", 0)
+	found_values.Add(input_num,a)
 	*bob = append(*bob, a)
 
 }
@@ -125,15 +136,13 @@ func make_2_to_1(list []*Number, found_values *NumMap) []*Number {
 	// That can be generated from 2 input numbers
 	// organised in such a way that we know how we created them
 	var ret_list []*Number
-	var plus_num *Number
-	//var mult_num *Number
-	//var minu_num *Number
 
 	a := list[0].Val
 	b := list[1].Val
 	// The thing that slows us down isn't calculations, but channel communications of generating new numbers
-	// and garbage collecting the pointless ones
+	// allocating memory for new numbers and garbage collecting the pointless old ones
 	// So it's worth spending some CPU working out the useless calculations
+	// And working out exactly what dimension of structure we need to generate
 	
 	a1 := (a==1)
 	b1 := (b==1)
@@ -145,55 +154,91 @@ func make_2_to_1(list []*Number, found_values *NumMap) []*Number {
 	} else {
 		no_sub = (b-a==b)
 	}
-	
+	num_to_make := 1
 
-	ret_list = make([]*Number, 1, 4)
-	plus_num = new_number(a+b, list, "+", found_values, 1)
-	ret_list[0] = plus_num
-
+	var mul_res int
 	if found_values.UseMult {
-		mult_num := new_number(a*b, list, "*", found_values, 2)
-		ret_list = append(ret_list, mult_num)
+		mul_res = a*b
+		num_to_make++
 	}
 
+	var divd bool
+	var div_res int
+	var sub_res int
 	if a_gt_b {
 		if !no_sub {
-			minu_num := new_number(a-b, list, "-", found_values, 1)
-			ret_list = append(ret_list,minu_num)
+			sub_res = a-b
+			num_to_make++
 		}
 		if (b > 0) && (!b1) && ((a % b) == 0) {
-			tmp_div := new_number((a / b), list, "/", found_values, 3)
-			ret_list = append(ret_list, tmp_div)
+			divd = true
+			div_res = a/b
+                	num_to_make++
 		}
 	} else {
 		if !no_sub {
-			minu_num := new_number(b-a, list, "--", found_values, 1)
-			ret_list = append(ret_list,minu_num)
+	                sub_res = b-a
+			num_to_make++
+
 		}
 		if (a > 0) && (!a1) && ((b % a) == 0) {
-			tmp_div := new_number((b / a), list, "\\", found_values, 3)
-			ret_list = append(ret_list, tmp_div)
+			divd = true
+			div_res = b/a
+	                num_to_make++
+
 		}
 	}
-	//found_values.AddMany(ret_list...)
-	//fmt.Printf("Values are: %d,%d\n",plus_num.Val,minu_num.Val)
+	//fmt.Println("Calling")
+	ret_list = found_values.aquire_numbers(num_to_make)
+	//fmt.Println("This is what we got:")
+	//for i,j := range ret_list {                                                                                                                                                                        
+        //        fmt.Printf("Item %x Pointer %p\n", i,j)                                                                                                                                                   
+        //}
+	current_number_loc := 0
+	ret_list[current_number_loc].configure(a+b, list, "+",  1) 
+	current_number_loc++
+
+	if !no_sub {
+		ret_list[current_number_loc].configure(sub_res, list, "-",  1)
+		current_number_loc++
+	}
+        if found_values.UseMult {
+		ret_list[current_number_loc].configure(mul_res, list, "*",  2)
+                current_number_loc++
+	}
+	if divd {
+		if a_gt_b {
+			ret_list[current_number_loc].configure(div_res, list, "/",  3)
+		} else {
+                        ret_list[current_number_loc].configure(div_res, list, "\\",  3)
+		}
+		//current_number_loc++
+	}
+
 	return ret_list
 }
+//func (nm *NumMap) aquire_numbers (num_to_make int) []*Number {
+//        tmp_list := make([]Number,num_to_make,4)        // Always allow 4 for cache lines                                                            
+//        ret_list := make([]*Number, num_to_make,4)                                                                                                                                                                            
+//        for i,l := range tmp_list {                                                                                                                  
+//                ret_list[i] = &l                                                                                                                                                                                             
+//        }
+//	return ret_list
+//}
+func (num *Number) configure (input_a int, input_b []*Number, operation string, difficult int) {
+     	num.Val = input_a                                                                                                                        
+                                                                                                                                                                                                                             
+        num.list = input_b                                                                                                                       
+        num.operation = operation                                                                                                                                                                                        
+        if len(input_b) > 1 {                                                                                                                        
+                num.difficulty = input_b[0].difficulty + input_b[1].difficulty + difficult                                                                                                                               
+        } else {                                                                                                                                     
+                num.difficulty = difficult
+        }
 
-func new_number(input_a int, input_b []*Number, operation string, found_values *NumMap, difficult int) *Number {
-
+}
+func new_number(input_a int, input_b []*Number, operation string, difficult int) *Number {
 	var new_num Number
-	//new_num = <-found_values.num_struct_queue
-	new_num.Val = input_a
-	//found_values.AddMany(&new_num)
-
-	new_num.list = input_b
-	new_num.operation = operation
-	if len(input_b) > 1 {
-		new_num.difficulty = input_b[0].difficulty + input_b[1].difficulty + difficult
-	} else {
-		new_num.difficulty = difficult
-	}
-	//fmt.Printf("There are %d elements in the input_a list\n", len(input_a.list))
+	new_num.configure(input_a,input_b,operation,difficult)
 	return &new_num
 }

@@ -119,21 +119,26 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 	}
 	found_values.AddSol(ret_list) 
 	// This adds about 10% to the run time, but reduces memory to 1/5th
-	//ret_list.CheckDuplicates()
+	ret_list.CheckDuplicates()
 	return ret_list
 }
 
 func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 	fmt.Println("Start Permute")
 	less := func(i, j interface{}) bool {
-		v1 := i.(*Number).Val
-		v2 := j.(*Number).Val
+		tmp,ok := i.(*Number)
+		if !ok {log.Fatal()}
+		v1:=tmp.Val
+		tmp,ok = j.(*Number)
+		if !ok {log.Fatal()}
+		v2:=tmp.Val
 		return v1 < v2
 	}
 	p, err := permutation.NewPerm(array_in, less)
 	if err != nil {
 		fmt.Println(err)
 	}
+
 	num_permutations := p.Left()
 	fmt.Println("Num permutes:", num_permutations)
 	var comms_channels []chan SolLst
@@ -201,7 +206,7 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 				go worker_par(bob, found_values, p.Index()-1)
 			}
 			if lone_map {
-				go worker_lone(bob, found_values, p.Index()-1)
+				worker_lone(bob, found_values, p.Index()-1)
 			}
 
 		}
@@ -228,11 +233,12 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 
 			//fmt.Println("removing token");
 			<-coallate_done
-			if found_values.Solved {
-				break
-			}
+			//if found_values.Solved {
+			//	break
+			//}
 			//fmt.Println("removed token");
 		}
+		fmt.Println("All workers completed so closing coallate channel")
 		close(coallate_chan)
 		//fmt.Println("Closing  map_merge_chan")
 		close(map_merge_chan)
@@ -244,6 +250,7 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 
 	output_merge := func() {
 		for v := range coallate_chan {
+			v.CheckDuplicates()
 			proof_list <- v
 		}
 		fmt.Println("Closing proof list")

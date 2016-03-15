@@ -3,6 +3,7 @@ package cnt_slv
 import (
 	"fmt"
 	"sync"
+	"log"
 )
 
 type NumMapAtom struct {
@@ -19,6 +20,14 @@ type NumMap struct {
 	input_channel_array    chan []NumMapAtom
 	done_channel     chan bool
 	num_struct_queue chan *Number
+
+	pool_lock sync.Mutex
+	pool_num []Number
+	pool_pnt []*Number
+	pool_pos int
+	pool_cap int
+	pool_stat int
+
 	Solved           bool
 	SeekShort        bool
 	UseMult          bool
@@ -28,7 +37,7 @@ type NumMap struct {
 func NewNumMap(proof_list *SolLst) *NumMap {
 	p := new(NumMap)
 	p.nmp = make(map[int]*Number)
-        p.input_channel = make(chan NumMapAtom, 1000)                              
+        p.input_channel = make(chan NumMapAtom, 1000)
 	p.input_channel_array = make(chan []NumMapAtom, 100)
 	p.done_channel = make(chan bool)
 	p.TargetSet = false
@@ -37,9 +46,70 @@ func NewNumMap(proof_list *SolLst) *NumMap {
 
 	p.num_struct_queue = make(chan *Number, 1024)
 	//go p.generate_number_structs()
+	p.pool_cap =16 
+	p.pool_num = make([]Number,p.pool_cap)
+	p.pool_pnt = make([]*Number,p.pool_cap)
+        for i,_:= range p.pool_num {                                                                                                        
+		j:= &p.pool_num[i]
+		//fmt.Printf("Init %x,Pointer %p\n", i,j)
+          	p.pool_pnt[i] = j                                                                                                                                                                                         
+        }
 
 	return p
 }
+func (nm *NumMap) aquire_numbers (num_to_make int) []*Number {
+	pool_num := make([]Number,num_to_make)
+	pool_pnt := make([]*Number,num_to_make)
+	for i,_:= range pool_num {                                                                                                        
+         j := &pool_num[i]                                                                                                                                                                                        
+         pool_pnt[i] = j                                                                                                           
+        }
+	return pool_pnt
+}
+
+func (nm *NumMap) aquire_numbers_pool (num_to_make int) []*Number {
+	// This function seems like it would be a good idea to reduce load on the malloc
+	// However it seems to make the garbage collector work harder
+	// Which ends up costing us more
+	//fmt.Println("Calling aquire_numbers:", num_to_make)
+	nm.pool_lock.Lock()
+	defer nm.pool_lock.Unlock()
+	// TBD make this more efficient by using up the last elements in the previous structure
+	num_in_queue:=nm.pool_cap-nm.pool_pos
+
+	if (num_to_make>nm.pool_cap) {
+		log.Fatal ("Requested us to make ", nm.pool_cap)
+	} else if (num_in_queue <num_to_make) {
+	        nm.pool_num = make([]Number,nm.pool_cap)
+	        nm.pool_pnt = make([]*Number,nm.pool_cap)
+
+		//fmt.Printf("Reallocared at %x\n", nm.pool_stat)
+		for i,_:= range nm.pool_num {
+			j := &nm.pool_num[i]
+			nm.pool_pnt[i] = j
+		}
+		nm.pool_stat = 0
+		nm.pool_pos=0
+	} else {
+		//fmt.Printf("Saved allocation\n")
+		nm.pool_stat++
+	}
+	new_end := nm.pool_pos+num_to_make
+
+        //tmp_list := nm.pool_num[nm.pool_pos:new_end]
+        //ret_list := nm.pool_pnt[nm.pool_pos:new_end]
+	old_pool_pos := nm.pool_pos
+	//fmt.Printf("Using position %x and %x\n", old_pool_pos, new_end)
+	//for i,j := range nm.pool_pnt[old_pool_pos:new_end] {
+	//	fmt.Printf("It's %x Pointer %p\n", i,j)
+	//}
+	
+	nm.pool_pos=new_end
+	//nm.pool_lock.Unlock()
+        return nm.pool_pnt[old_pool_pos:new_end]
+}
+
+
 func (item *NumMap) Add(a int, b *Number) {
 	var atomic NumMapAtom
 	atomic.a = a
@@ -57,7 +127,7 @@ func (item *NumMap) AddMany( b ...*Number) {
 		arr[i] = atomic
 	}
 	item.input_channel_array <- arr
-} 
+}
 
 func (item *NumMap) AddSol( a SolLst) {
 	arr_len := 0
@@ -69,17 +139,17 @@ func (item *NumMap) AddSol( a SolLst) {
 	i:=0
 	for _,b := range a {
 	        for _,c := range *b {
-        	        var atomic NumMapAtom                                                                                                            
-                	atomic.a = c.Val                                                                                                                 
-	                atomic.b = c                                                                                                                     
-        	        atomic.report = false                                                                                                            
-                	//arr = append(arr,atomic)                                                                                                    
+        	        var atomic NumMapAtom
+                	atomic.a = c.Val
+	                atomic.b = c
+        	        atomic.report = false
+                	//arr = append(arr,atomic)
 			arr[i] = atomic
 			i++
 	        }
 	}
-        item.input_channel_array <- arr                                                                                                          
-} 
+        item.input_channel_array <- arr
+}
 func (item *NumMap) Merge(a NumMap, report bool) {
 
 	for i, v := range a.nmp {
@@ -97,46 +167,35 @@ func (item *NumMap) AddProc(proof_list *SolLst) {
 	add_item := func (bob NumMapAtom) {
 		retr, ok := item.nmp[bob.a]
 		if !ok {
-
 			item.nmp[bob.a] = bob.b
-			//fmt.Printf("New Value %d\n", bob.b.Val);
 			if item.TargetSet {
-				//fmt.Printf("Target has been set to %d, we have:%d\n\n",item.Target,bob.a)
 				if bob.a == item.Target {
 					proof_string := bob.b.ProveIt()
 					fmt.Printf("Value %d, = %s, Proof Len is %d, Difficulty is %d\n", bob.b.Val, proof_string, bob.b.ProofLen(), bob.b.difficulty)
 					if !item.SeekShort {
 						item.Solved = true
-						//os.Exit(0)
-						//item.CheckDuplicates(proof_list)
-						//item.done_channel <- true
-						//return
 					}
 				}
 			}
 		} else if item.SeekShort {
-			//if (retr.ProofLen()>bob.b.ProofLen()) {
 			if retr.difficulty > bob.b.difficulty {
 
 				// In seek short mode, then update when it has a shorter proof
 				item.nmp[bob.a] = bob.b
 				//fmt.Printf("Value %d, = %s, Proof Len is %d, Difficulty is %d\n", bob.b.Val, bob.b.ProveIt(), bob.b.ProofLen(), bob.b.difficulty)
 			}
-			//if item.TargetSet && (bob.a == item.Target) {
-			//	fmt.Printf("Value %d, = %s, Proof Len is %d, Difficulty is %d\n", bob.b.Val, bob.b.ProveIt(), bob.b.ProofLen(), bob.b.difficulty)
-			//}
 		}
 	}
 	waiter := new(sync.WaitGroup)
 	waiter.Add(2)
 	var local_lock sync.Mutex
 	go func () {
-		for fred := range item.input_channel_array{                                                                                                    
+		for fred := range item.input_channel_array{
 			local_lock.Lock()
 			for _,bob := range fred {
-                		add_item(bob)          
-			}                                                                                                           
-  			local_lock.Unlock() 
+                		add_item(bob)
+			}
+  			local_lock.Unlock()
 	        }
 		waiter.Done()
 	} ()
