@@ -46,23 +46,54 @@ func NewNumMap(proof_list *SolLst) *NumMap {
 
 	p.num_struct_queue = make(chan *Number, 1024)
 	//go p.generate_number_structs()
-	p.pool_cap =16 
+	p.pool_cap =16
 	p.pool_num = make([]Number,p.pool_cap)
 	p.pool_pnt = make([]*Number,p.pool_cap)
-        for i,_:= range p.pool_num {                                                                                                        
+        for i,_:= range p.pool_num {
 		j:= &p.pool_num[i]
 		//fmt.Printf("Init %x,Pointer %p\n", i,j)
-          	p.pool_pnt[i] = j                                                                                                                                                                                         
+          	p.pool_pnt[i] = j
         }
 
 	return p
 }
+func (nmp *NumMap) Keys () []int {
+	ret_list := make([]int, len(nmp.nmp))
+	i:=0;
+	for key,_ := range nmp.nmp {
+		ret_list[i] = key
+		i++
+	}
+	return ret_list
+}
+func (ref *NumMap) Compare (can *NumMap) bool {
+	pass := true
+	// Compare two number maps return true if they contain the same numbers
+	for _,key := range can.Keys() {
+		_,ok := ref.nmp[key]
+		if (!ok) {
+			fmt.Printf("The value %d was in the candidate, but not the reference\n", key)
+			//return false
+			pass = false
+		}
+	}
+
+        for _,key := range ref.Keys() {
+                _,ok := can.nmp[key]
+                if (!ok) {
+	       		fmt.Printf("The value %d was in the reference, but not the candidate\n", key)
+	       		//return false
+			pass = false
+                }
+        }
+	return pass
+}
 func (nm *NumMap) aquire_numbers (num_to_make int) []*Number {
 	pool_num := make([]Number,num_to_make)
 	pool_pnt := make([]*Number,num_to_make)
-	for i,_:= range pool_num {                                                                                                        
-         j := &pool_num[i]                                                                                                                                                                                        
-         pool_pnt[i] = j                                                                                                           
+	for i,_:= range pool_num {
+         j := &pool_num[i]
+         pool_pnt[i] = j
         }
 	return pool_pnt
 }
@@ -103,7 +134,7 @@ func (nm *NumMap) aquire_numbers_pool (num_to_make int) []*Number {
 	//for i,j := range nm.pool_pnt[old_pool_pos:new_end] {
 	//	fmt.Printf("It's %x Pointer %p\n", i,j)
 	//}
-	
+
 	nm.pool_pos=new_end
 	//nm.pool_lock.Unlock()
         return nm.pool_pnt[old_pool_pos:new_end]
@@ -261,7 +292,8 @@ func (item *NumMap) CheckDuplicates(proof_list *SolLst) {
 
 }
 func (item *NumMap) LastNumMap() {
-	fmt.Println("Closing input_channel")
+	//fmt.Println("Closing input_channel")
+	close(item.input_channel_array)
 	close(item.input_channel)
 	<-item.done_channel
 }

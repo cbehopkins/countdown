@@ -2,6 +2,7 @@ package cnt_slv
 
 import (
 	"fmt"
+	"log"
 	"sort"
 )
 
@@ -27,6 +28,59 @@ func (i *Number) ProofLen() int {
 	}
 	return cumlen
 }
+func (i *Number) TidyDoubles()  {                                                                                                                  
+	// Remove any double notation in a proof
+	// we use   our own special notation to make things easier for ourselves
+	// However it's better to remove it at the tidy stage
+	// To make reducing the proof sizes easier
+	// Here's what our operands say
+	// a-b == b--a
+	// a/b == b\\a
+	
+	if (i.list == nil) {return}
+	if (len(i.list) !=2 ) {
+		log.Fatal("Error you are not allowed to call TidyDoubles on a list that has had TidyOperators called")
+	}
+
+	i.list[0].TidyDoubles()
+	i.list[1].TidyDoubles()
+
+	if (i.operation == "--") {
+		i.operation = "-"
+	} else if i.operation == "\\" {
+		i.operation = "/"
+	} else {
+		// Must not be a double operator
+		return
+	}
+	temp_array := make([]*Number, 2)
+	temp_array[0] = i.list[1]
+	temp_array[1] = i.list[0]
+	i.list = temp_array
+	return
+}
+func (i *Number) TidyOperators()  {
+	// This one is sexy
+	// we often in our proofs get things like:
+	// (((1+2)+3)+(4/2)) or
+	// (((8-2)-1)-2)
+	// Which could of course both be simplified
+	// So what we will do is re-write the tree structure of our proofs
+	// Things are easy with + as we can just descend the tree and if the next level down uses a + as well
+	// Then we can just combine them
+}
+
+func (item NumCol) TidyNumCol () {
+	for _, v := range item {
+		v.TidyDoubles()
+		v.TidyOperators()
+	}
+}
+func (item SolLst) TidySolLst () {
+	for _,v:= range item {
+		v.TidyNumCol ()
+	}
+}
 func (i *Number) ProveIt() string {
 	var proof string
 	var val int
@@ -34,17 +88,21 @@ func (i *Number) ProveIt() string {
 	if i.list == nil {
 		proof = fmt.Sprintf("%d", val)
 	} else {
-		p0 := i.list[0].ProveIt()
-		p1 := i.list[1].ProveIt()
-		operation := i.operation
-		switch operation {
-		case "--":
-			proof = fmt.Sprintf("(%s-%s)", p1, p0)
-		case "\\":
-			proof = fmt.Sprintf("(%s/%s)", p1, p0)
-		default:
-			proof = fmt.Sprintf("(%s%s%s)", p0, operation, p1)
+		proof = "("
+		op := ""
+		for _,v := range i.list {
+			switch op {
+			case "--":
+				proof = v.ProveIt() + "-" + proof
+			case "\\":
+				proof = v.ProveIt() + "/" + proof
+			default:
+				proof = proof + op + v.ProveIt()
+			}
+			op = i.operation
 		}
+		proof = proof + ")"
+
 	}
 	return proof
 }
@@ -99,13 +157,14 @@ func (bob NumCol) Len() int {
 	array_len = len(bob)
 	return array_len
 }
-func (item SolLst) CheckDuplicates() {
+func (item *SolLst) CheckDuplicates() {
 	sol_map := make(map[string]NumCol)
 	var del_queue []int
-
-	for i := 0; i < len(item); i++ {
+	for i := 0; i < len(*item); i++ {
 		var v NumCol
-		v = *item[i]
+		var t SolLst
+		t = *item
+		v = *t[i]
 		string := v.GetNumCol()
 
 		_, ok := sol_map[string]
@@ -113,7 +172,7 @@ func (item SolLst) CheckDuplicates() {
 			//fmt.Println("Added ", v)
 			sol_map[string] = v
 		} else {
-			//fmt.Printf("%s already exists, Length %d\n:", string,len(tpp));
+			//fmt.Printf("%s already exists\n", string)
 			//pretty.Println(t1)
 			//fmt.Printf("It is now, %d", i);
 			//pretty.Println(t0);
@@ -125,10 +184,10 @@ func (item SolLst) CheckDuplicates() {
 		//fmt.Printf("DQ#%d, Len=%d\n",i, len(del_queue))
 		v := del_queue[i-1]
 		//fmt.Println("You've asked to delete",v);
-		l1 := item
-		item = append(l1[:v], l1[v+1:]...)
+		l1 := *item
+		*item = append(l1[:v], l1[v+1:]...)
 	}
-
+	//fmt.Printf("In Check, OrigLen %d, New Len %d\n",orig_len,len(*item))
 }
 
 func make_2_to_1(list []*Number, found_values *NumMap) []*Number {

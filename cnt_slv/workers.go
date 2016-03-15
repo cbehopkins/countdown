@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"runtime"
+	"sync"
+
 	"github.com/fighterlyt/permutation"
 	"github.com/tonnerre/golang-pretty"
 )
@@ -211,55 +213,50 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 
 		}
 	}
-	hold_until_done := make(chan bool)
 	//fmt.Println("Starting caller")
 	go caller()
 	//fmt.Println("Caller started")
 	merge_report := false // Turn off reporting of new numbers for first run
-
+	mwg := new(sync.WaitGroup)
+	mwg.Add(2)
 	merge_func_worker := func() {
 		for v := range map_merge_chan {
 			found_values.Merge(v, merge_report)
 			merge_report = true
 		}
-		hold_until_done <- true
+		mwg.Done()
 	}
 	if !lone_map {
+		mwg.Add(1)
 		go merge_func_worker()
 	}
 	// This little go function waits for all the procs to have a done channel and then closes the channel
 	done_control := func() {
 		for i := 0; i < num_permutations; i++ {
-
-			//fmt.Println("removing token");
 			<-coallate_done
-			//if found_values.Solved {
-			//	break
-			//}
-			//fmt.Println("removed token");
 		}
-		fmt.Println("All workers completed so closing coallate channel")
+		//fmt.Println("All workers completed so closing coallate channel")
 		close(coallate_chan)
 		//fmt.Println("Closing  map_merge_chan")
 		close(map_merge_chan)
-		if lone_map {
-			hold_until_done <- true
-		} // when all process finished then we're done with the NumberMap
+		mwg.Done()
 	}
 	go done_control()
 
 	output_merge := func() {
 		for v := range coallate_chan {
-			v.CheckDuplicates()
+			//v.CheckDuplicates()
+			//fmt.Println("Received a proof")
 			proof_list <- v
 		}
-		fmt.Println("Closing proof list")
+		//fmt.Println("Closing proof list")
 		close(proof_list)
+		mwg.Done()
 	}
 	go output_merge()
-	<-hold_until_done // don't exit permute until merge_func_worker has finished
+	mwg.Wait()
 
-	fmt.Println("Last Map all done")
+	//fmt.Println("Last Map all done")
 	found_values.LastNumMap()
 
 }
