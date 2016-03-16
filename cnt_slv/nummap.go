@@ -2,8 +2,8 @@ package cnt_slv
 
 import (
 	"fmt"
-	"sync"
 	"log"
+	"sync"
 )
 
 type NumMapAtom struct {
@@ -13,31 +13,31 @@ type NumMapAtom struct {
 }
 
 type NumMap struct {
-	nmp              map[int]*Number
-	TargetSet        bool
-	Target           int
-        input_channel    chan NumMapAtom
-	input_channel_array    chan []NumMapAtom
-	done_channel     chan bool
-	num_struct_queue chan *Number
+	nmp                 map[int]*Number
+	TargetSet           bool
+	Target              int
+	input_channel       chan NumMapAtom
+	input_channel_array chan []NumMapAtom
+	done_channel        chan bool
+	num_struct_queue    chan *Number
 
 	pool_lock sync.Mutex
-	pool_num []Number
-	pool_pnt []*Number
-	pool_pos int
-	pool_cap int
+	pool_num  []Number
+	pool_pnt  []*Number
+	pool_pos  int
+	pool_cap  int
 	pool_stat int
 
-	Solved           bool
-	SeekShort        bool
-	UseMult          bool
-	SelfTest         bool
+	Solved    bool
+	SeekShort bool
+	UseMult   bool
+	SelfTest  bool
 }
 
 func NewNumMap(proof_list *SolLst) *NumMap {
 	p := new(NumMap)
 	p.nmp = make(map[int]*Number)
-        p.input_channel = make(chan NumMapAtom, 1000)
+	p.input_channel = make(chan NumMapAtom, 1000)
 	p.input_channel_array = make(chan []NumMapAtom, 100)
 	p.done_channel = make(chan bool)
 	p.TargetSet = false
@@ -46,59 +46,59 @@ func NewNumMap(proof_list *SolLst) *NumMap {
 
 	p.num_struct_queue = make(chan *Number, 1024)
 	//go p.generate_number_structs()
-	p.pool_cap =16
-	p.pool_num = make([]Number,p.pool_cap)
-	p.pool_pnt = make([]*Number,p.pool_cap)
-        for i,_:= range p.pool_num {
-		j:= &p.pool_num[i]
+	p.pool_cap = 16
+	p.pool_num = make([]Number, p.pool_cap)
+	p.pool_pnt = make([]*Number, p.pool_cap)
+	for i, _ := range p.pool_num {
+		j := &p.pool_num[i]
 		//fmt.Printf("Init %x,Pointer %p\n", i,j)
-          	p.pool_pnt[i] = j
-        }
+		p.pool_pnt[i] = j
+	}
 
 	return p
 }
-func (nmp *NumMap) Keys () []int {
+func (nmp *NumMap) Keys() []int {
 	ret_list := make([]int, len(nmp.nmp))
-	i:=0;
-	for key,_ := range nmp.nmp {
+	i := 0
+	for key, _ := range nmp.nmp {
 		ret_list[i] = key
 		i++
 	}
 	return ret_list
 }
-func (ref *NumMap) Compare (can *NumMap) bool {
+func (ref *NumMap) Compare(can *NumMap) bool {
 	pass := true
 	// Compare two number maps return true if they contain the same numbers
-	for _,key := range can.Keys() {
-		_,ok := ref.nmp[key]
-		if (!ok) {
+	for _, key := range can.Keys() {
+		_, ok := ref.nmp[key]
+		if !ok {
 			fmt.Printf("The value %d was in the candidate, but not the reference\n", key)
 			//return false
 			pass = false
 		}
 	}
 
-        for _,key := range ref.Keys() {
-                _,ok := can.nmp[key]
-                if (!ok) {
-	       		fmt.Printf("The value %d was in the reference, but not the candidate\n", key)
-	       		//return false
+	for _, key := range ref.Keys() {
+		_, ok := can.nmp[key]
+		if !ok {
+			fmt.Printf("The value %d was in the reference, but not the candidate\n", key)
+			//return false
 			pass = false
-                }
-        }
+		}
+	}
 	return pass
 }
-func (nm *NumMap) aquire_numbers (num_to_make int) []*Number {
-	pool_num := make([]Number,num_to_make)
-	pool_pnt := make([]*Number,num_to_make)
-	for i,_:= range pool_num {
-         j := &pool_num[i]
-         pool_pnt[i] = j
-        }
+func (nm *NumMap) aquire_numbers(num_to_make int) []*Number {
+	pool_num := make([]Number, num_to_make)
+	pool_pnt := make([]*Number, num_to_make)
+	for i, _ := range pool_num {
+		j := &pool_num[i]
+		pool_pnt[i] = j
+	}
 	return pool_pnt
 }
 
-func (nm *NumMap) aquire_numbers_pool (num_to_make int) []*Number {
+func (nm *NumMap) aquire_numbers_pool(num_to_make int) []*Number {
 	// This function seems like it would be a good idea to reduce load on the malloc
 	// However it seems to make the garbage collector work harder
 	// Which ends up costing us more
@@ -106,40 +106,39 @@ func (nm *NumMap) aquire_numbers_pool (num_to_make int) []*Number {
 	nm.pool_lock.Lock()
 	defer nm.pool_lock.Unlock()
 	// TBD make this more efficient by using up the last elements in the previous structure
-	num_in_queue:=nm.pool_cap-nm.pool_pos
+	num_in_queue := nm.pool_cap - nm.pool_pos
 
-	if (num_to_make>nm.pool_cap) {
-		log.Fatal ("Requested us to make ", nm.pool_cap)
-	} else if (num_in_queue <num_to_make) {
-	        nm.pool_num = make([]Number,nm.pool_cap)
-	        nm.pool_pnt = make([]*Number,nm.pool_cap)
+	if num_to_make > nm.pool_cap {
+		log.Fatal("Requested us to make ", nm.pool_cap)
+	} else if num_in_queue < num_to_make {
+		nm.pool_num = make([]Number, nm.pool_cap)
+		nm.pool_pnt = make([]*Number, nm.pool_cap)
 
 		//fmt.Printf("Reallocared at %x\n", nm.pool_stat)
-		for i,_:= range nm.pool_num {
+		for i, _ := range nm.pool_num {
 			j := &nm.pool_num[i]
 			nm.pool_pnt[i] = j
 		}
 		nm.pool_stat = 0
-		nm.pool_pos=0
+		nm.pool_pos = 0
 	} else {
 		//fmt.Printf("Saved allocation\n")
 		nm.pool_stat++
 	}
-	new_end := nm.pool_pos+num_to_make
+	new_end := nm.pool_pos + num_to_make
 
-        //tmp_list := nm.pool_num[nm.pool_pos:new_end]
-        //ret_list := nm.pool_pnt[nm.pool_pos:new_end]
+	//tmp_list := nm.pool_num[nm.pool_pos:new_end]
+	//ret_list := nm.pool_pnt[nm.pool_pos:new_end]
 	old_pool_pos := nm.pool_pos
 	//fmt.Printf("Using position %x and %x\n", old_pool_pos, new_end)
 	//for i,j := range nm.pool_pnt[old_pool_pos:new_end] {
 	//	fmt.Printf("It's %x Pointer %p\n", i,j)
 	//}
 
-	nm.pool_pos=new_end
+	nm.pool_pos = new_end
 	//nm.pool_lock.Unlock()
-        return nm.pool_pnt[old_pool_pos:new_end]
+	return nm.pool_pnt[old_pool_pos:new_end]
 }
-
 
 func (item *NumMap) Add(a int, b *Number) {
 	var atomic NumMapAtom
@@ -148,38 +147,38 @@ func (item *NumMap) Add(a int, b *Number) {
 	atomic.report = false
 	item.input_channel <- atomic
 }
-func (item *NumMap) AddMany( b ...*Number) {
+func (item *NumMap) AddMany(b ...*Number) {
 	arr := make([]NumMapAtom, len(b))
-	for i,c := range b {
-	        var atomic NumMapAtom
-        	atomic.a = c.Val
-	        atomic.b = c
-        	atomic.report = false
+	for i, c := range b {
+		var atomic NumMapAtom
+		atomic.a = c.Val
+		atomic.b = c
+		atomic.report = false
 		arr[i] = atomic
 	}
 	item.input_channel_array <- arr
 }
 
-func (item *NumMap) AddSol( a SolLst) {
+func (item *NumMap) AddSol(a SolLst) {
 	arr_len := 0
-        for _,b := range a {
+	for _, b := range a {
 		arr_len = arr_len + len(*b)
-        }
+	}
 
-        arr := make([]NumMapAtom,arr_len)
-	i:=0
-	for _,b := range a {
-	        for _,c := range *b {
-        	        var atomic NumMapAtom
-                	atomic.a = c.Val
-	                atomic.b = c
-        	        atomic.report = false
-                	//arr = append(arr,atomic)
+	arr := make([]NumMapAtom, arr_len)
+	i := 0
+	for _, b := range a {
+		for _, c := range *b {
+			var atomic NumMapAtom
+			atomic.a = c.Val
+			atomic.b = c
+			atomic.report = false
+			//arr = append(arr,atomic)
 			arr[i] = atomic
 			i++
-	        }
+		}
 	}
-        item.input_channel_array <- arr
+	item.input_channel_array <- arr
 }
 func (item *NumMap) Merge(a NumMap, report bool) {
 
@@ -195,7 +194,7 @@ func (item *NumMap) Merge(a NumMap, report bool) {
 }
 
 func (item *NumMap) AddProc(proof_list *SolLst) {
-	add_item := func (bob NumMapAtom) {
+	add_item := func(bob NumMapAtom) {
 		retr, ok := item.nmp[bob.a]
 		if !ok {
 			item.nmp[bob.a] = bob.b
@@ -220,24 +219,24 @@ func (item *NumMap) AddProc(proof_list *SolLst) {
 	waiter := new(sync.WaitGroup)
 	waiter.Add(2)
 	var local_lock sync.Mutex
-	go func () {
-		for fred := range item.input_channel_array{
+	go func() {
+		for fred := range item.input_channel_array {
 			local_lock.Lock()
-			for _,bob := range fred {
-                		add_item(bob)
+			for _, bob := range fred {
+				add_item(bob)
 			}
-  			local_lock.Unlock()
-	        }
+			local_lock.Unlock()
+		}
 		waiter.Done()
-	} ()
-	go func () {
+	}()
+	go func() {
 		for bob := range item.input_channel {
 			local_lock.Lock()
 			add_item(bob)
 			local_lock.Unlock()
 		}
 		waiter.Done()
-	} ()
+	}()
 	waiter.Wait()
 	if item.SelfTest {
 		check_return_list(*proof_list, item)
@@ -332,22 +331,22 @@ func (item *NumMap) PrintProofs() {
 	}
 	fmt.Printf("There are:\n%d Numbers\nMin:%4d Max:%4d\n", num_num, min_num, max_num)
 }
-func (item *NumMap) generate_number_structs() {
-	for {
-		//var new_num_list [] Number
-		//new_num_list = make([]Number, 16)
-		//fmt.Println("new_num_list is::::")
-		//pretty.Println(new_num_list)
-		//for i,v:= range new_num_list {
-		//  var ttmp *Number
-		//  ttmp = &v
-		//  fmt.Printf("Adding %d, %p\n",i, ttmp)
-		//  item.num_struct_queue <- ttmp
-		//}
-		var tmp_var Number
-		//var_array := make([]Number, 1024)
-		//for _, itm := range var_array {
-		item.num_struct_queue <- &tmp_var
-		//}
-	}
-}
+//func (item *NumMap) generate_number_structs() {
+//	for {
+//		//var new_num_list [] Number
+//		//new_num_list = make([]Number, 16)
+//		//fmt.Println("new_num_list is::::")
+//		//pretty.Println(new_num_list)
+//		//for i,v:= range new_num_list {
+//		//  var ttmp *Number
+//		//  ttmp = &v
+//		//  fmt.Printf("Adding %d, %p\n",i, ttmp)
+//		//  item.num_struct_queue <- ttmp
+//		//}
+//		var tmp_var Number
+//		//var_array := make([]Number, 1024)
+//		//for _, itm := range var_array {
+//		item.num_struct_queue <- &tmp_var
+//		//}
+//	}
+//}

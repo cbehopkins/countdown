@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"math/rand"
 	"runtime"
-	"testing"
 	"sync"
+	"testing"
 )
 
 //func TestSelf(t *testing.T) {
@@ -43,7 +43,8 @@ func init_many() []testset {
 
 func TestOne(t *testing.T) {
 	var target int
-	target = 78
+	//target = 78
+	target = 531000
 
 	var proof_list SolLst
 	var bob NumCol
@@ -91,8 +92,8 @@ func TestMany(t *testing.T) {
 
 	test_set := init_many()
 	for _, item := range test_set {
-		proof_list:=*new(SolLst)
-		bob :=*new(NumCol)
+		proof_list := *new(SolLst)
+		bob := *new(NumCol)
 		found_values := NewNumMap(&proof_list) //pass it the proof list so it can auto-check for validity at the end
 		found_values.SelfTest = true
 		found_values.UseMult = true
@@ -211,57 +212,56 @@ func TestIt(t *testing.T) {
 	}
 }
 func TestReduction(t *testing.T) {
-        var proof_list0 SolLst
-        var proof_list1 SolLst
-        var bob0 NumCol
+	var proof_list0 SolLst
+	var proof_list1 SolLst
+	var bob0 NumCol
 	var bob1 NumCol
-        found_values0 := NewNumMap(&proof_list0) //pass it the proof list so it can auto-check for validity at the end
-        found_values1 := NewNumMap(&proof_list1) //pass it the proof list so it can auto-check for validity at the end
+	found_values0 := NewNumMap(&proof_list0) //pass it the proof list so it can auto-check for validity at the end
+	found_values1 := NewNumMap(&proof_list1) //pass it the proof list so it can auto-check for validity at the end
 
-        found_values0.SelfTest = true
-        found_values0.UseMult = true
+	found_values0.SelfTest = true
+	found_values0.UseMult = true
 
-        found_values1.SelfTest = true
-        found_values1.UseMult = true
+	found_values1.SelfTest = true
+	found_values1.UseMult = true
 
-        bob0.AddNum(8, found_values0)
-        bob0.AddNum(9, found_values0)
-        bob0.AddNum(10, found_values0)
-        bob0.AddNum(75, found_values0)
-        //bob0.AddNum(25, found_values0)
-        bob0.AddNum(100, found_values0)
-        bob1.AddNum(8, found_values1)                                                                                                                                                                                                
-        bob1.AddNum(9, found_values1)                                                                                                                 
-        bob1.AddNum(10, found_values1)                                                                                                                                                                                               
-        bob1.AddNum(75, found_values1)                                                                                                                
-        //bob1.AddNum(25, found_values1)                                                                                                                                                                                             
-        bob1.AddNum(100, found_values1)
+	bob0.AddNum(8, found_values0)
+	bob0.AddNum(9, found_values0)
+	bob0.AddNum(10, found_values0)
+	bob0.AddNum(75, found_values0)
+	//bob0.AddNum(25, found_values0)
+	bob0.AddNum(100, found_values0)
+	bob1.AddNum(8, found_values1)
+	bob1.AddNum(9, found_values1)
+	bob1.AddNum(10, found_values1)
+	bob1.AddNum(75, found_values1)
+	//bob1.AddNum(25, found_values1)
+	bob1.AddNum(100, found_values1)
 
+	return_proofs0 := make(chan SolLst, 16)
+	return_proofs1 := make(chan SolLst, 16)
+	proof_list0 = append(proof_list0, &bob0) // Add on the work item that is the source
+	proof_list1 = append(proof_list1, &bob1) // Add on the work item that is the source
 
-        return_proofs0 := make(chan SolLst, 16)
-        return_proofs1 := make(chan SolLst, 16)
-        proof_list0 = append(proof_list0, &bob0) // Add on the work item that is the source
-        proof_list1 = append(proof_list1, &bob1) // Add on the work item that is the source
-
-        fmt.Println("Starting permute")
-        go PermuteN(bob0, found_values0, return_proofs0)
+	fmt.Println("Starting permute")
+	go PermuteN(bob0, found_values0, return_proofs0)
 	mwg := new(sync.WaitGroup)
 	mwg.Add(1)
-        go func () {
-	for v := range return_proofs0 {
-                        proof_list0 = append(proof_list0, v...)
-        }
-	mwg.Done()
-	} ()
+	go func() {
+		for v := range return_proofs0 {
+			proof_list0 = append(proof_list0, v...)
+		}
+		mwg.Done()
+	}()
 	mwg.Wait()
 	mwg.Add(1)
-        go PermuteN(bob1, found_values1, return_proofs1)
-        go func () {
-        for v := range return_proofs1 {
-                        proof_list1 = append(proof_list1, v...)
-        }
-	mwg.Done()
-        } ()
+	go PermuteN(bob1, found_values1, return_proofs1)
+	go func() {
+		for v := range return_proofs1 {
+			proof_list1 = append(proof_list1, v...)
+		}
+		mwg.Done()
+	}()
 	mwg.Wait()
 	fmt.Println("Everything should have finished by now, start pringting proofs")
 	// So by this point found_values* and proof_list* should both have the same contents - if not in the same order
@@ -271,25 +271,24 @@ func TestReduction(t *testing.T) {
 		t.Fail()
 	}
 
-        var proof_list2 SolLst
+	var proof_list2 SolLst
 	proof_list2 = append(proof_list2, proof_list0...)
 	proof_list0.CheckDuplicates()
-	fmt.Printf("Size Before %d; Size after %d\n",len(proof_list2),len(proof_list0))
+	proof_list0.TidySolLst()
+	fmt.Printf("Size Before %d; Size after %d\n", len(proof_list2), len(proof_list0))
 	found_values2 := NewNumMap(&proof_list2)
 	found_values2.SelfTest = true
 	found_values2.UseMult = true
 
 	found_values2.AddSol(proof_list0)
 	found_values2.LastNumMap()
-	if found_values2.Compare(found_values0) {                                                                                                    
-        } else {                                                                                                                                                                                                                    
+	if found_values2.Compare(found_values0) {
+	} else {
 		fmt.Println("The new FV were different")
-                t.Fail()                                                                                                      
-        } 
-
-
+		t.Fail()
+	}
+	found_values0.PrintProofs()
 }
-
 
 func BenchmarkWorkn(b *testing.B) {
 
