@@ -39,7 +39,7 @@ func (i *Number) TidyDoubles() {
 	// a-b == b--a
 	// a/b == b\\a
 
-	if i.list == nil {
+	if (i.list == nil) || (len(i.list) == 0) {
 		return
 	}
 
@@ -63,7 +63,7 @@ func (i *Number) TidyDoubles() {
 		// Must not be a double operator
 		return
 	}
-	// CBH get this from the centra allocator
+	// CBH get this from the central allocator
 	temp_array := make([]*Number, 2)
 	temp_array[0] = i.list[1]
 	temp_array[1] = i.list[0]
@@ -86,20 +86,40 @@ func (i *Number) TidyOperators() {
 	// Look at the 3 and see how we got it.
 	// we will see (1+2) uses the same operator
 	// so we can pull that into ours
+	// The same applies to multiples
+
+	// When it comes to subtract and divide we have an issue
+	// ((a-b)-c)-d == (a-(b+c+d)) <- much tidier
+	// so let's look at: (a-b)-c as a starting point
+	// Actually represented as something like:
+	// g-c and we look at g and find it is a-b
+	// but we could say that:
+	// * if we are a subtract and the (first) leaf is a subtract
+	// * Create a new number that is the leaf's second number + our second number
+	// * Set our first number to the leaf's First number
+	// * Set our second number to the new number we just made
+	// Likewise for: a-(b-c) -> (a+c)-b
+	// * if we are a subtract and the (second) leaf is a subtract
+	// * Create a new number that is the leaf's second number + our First Number
+	// * Set our first number to the  new number we just made
+	// * Set our second number to the leaf's First number
+	// Now we could get clever for things like merging addition if come the the
+	// numbers in out subtraction turned into an addition, or we could just run ourselves
+	// on that new number whch will merge up any additions
 
 	// But of course the first thing we want is for their house to be in order
-	tmp_list := make([]*Number, 0, 4)	// CBH get this from the centra allocator
+	tmp_list := make([]*Number, 0, 4) // CBH get this from the centra allocator
 	list_modified := false
 	for _, v := range i.list {
 		v.TidyOperators()
 		// Let's just combine +s for now
 		if (i.operation == "+") && (v.operation == "+") {
-			i.difficulty = i.difficulty+v.difficulty
+			i.difficulty = i.difficulty + v.difficulty
 			tmp_list = append(tmp_list, v.list...)
 			list_modified = true
 		} else if (i.operation == "*") && (v.operation == "*") {
 			tmp_list = append(tmp_list, v.list...)
-			i.difficulty = i.difficulty+v.difficulty
+			i.difficulty = i.difficulty + v.difficulty
 			list_modified = true
 		} else {
 			tmp_list = append(tmp_list, v)
@@ -109,6 +129,55 @@ func (i *Number) TidyOperators() {
 		i.list = tmp_list
 	}
 
+	if (i.operation == "-") && (len(i.list) == 2) {
+		// Play it safe and check first, work out optimisation later
+		if (i.list[0].operation == "-") && (i.list[1].operation == "-") {
+			// Fill in this later optimisaton
+			// basically turn (a-b)-(c-d) -> (a+d)-(b+c)
+		} else if i.list[0].operation == "-" {
+			// Transform (a-b)-c -> a-(b+c)
+			// in this terminology
+			// a = i.list[0].list[0]
+			// b = i.list[0].list[1]
+			// c = i.list[1]
+			// create b+c
+			my_list0 := make([]*Number, 2)
+			my_list0[0] = i.list[1]
+			my_list0[1] = i.list[0].list[1]
+
+			b_plus_c := new_number((i.list[1].Val + i.list[0].list[1].Val), my_list0, "+", (i.list[1].difficulty + i.list[0].list[1].difficulty + 1))
+
+			my_list1 := make([]*Number, 2)
+			my_list1[0] = i.list[0].list[0]
+			my_list1[1] = b_plus_c
+			new_num := new_number(i.Val, my_list1, "-", (b_plus_c.difficulty + i.list[0].list[0].difficulty + 1))
+			i = new_num
+			i.TidyOperators()
+			i.ProveSol() //CBH we've made serious modification so test it
+		} else if i.list[1].operation == "-" {
+			// Transform a-(b-c) -> (a+c)-b
+			// in this terminology
+			// a = i.list[0]
+			// b = i.list[1].list[0]
+			// c = i.list[1].list[1]
+
+			// create a+c
+			my_list0 := make([]*Number, 2)
+			my_list0[0] = i.list[0]
+			my_list0[1] = i.list[1].list[1]
+			a_plus_c := new_number((my_list0[0].Val + my_list0[1].Val), my_list0, "+", (my_list0[0].difficulty + my_list0[1].difficulty + 1))
+
+			my_list1 := make([]*Number, 2)
+			my_list1[0] = a_plus_c
+			my_list1[1] = i.list[1].list[0]
+			new_num := new_number(i.Val, my_list1, "-", (a_plus_c.difficulty + my_list1[1].difficulty + 1))
+
+			i = new_num
+			i.TidyOperators()
+			i.ProveSol()
+		}
+	}
+
 }
 
 func (item NumCol) TidyNumCol() {
@@ -116,6 +185,7 @@ func (item NumCol) TidyNumCol() {
 		v.ProveSol()
 		v.TidyDoubles()
 		v.TidyOperators()
+		v.ProveSol() // Just in case the Tidy functions have got things wrong
 	}
 }
 func (item SolLst) TidySolLst() {
@@ -123,16 +193,18 @@ func (item SolLst) TidySolLst() {
 		v.TidyNumCol()
 	}
 }
+
 func (i *Number) ProveSol() int {
 	// This function should go through the list and prove the solution
 	// Also do other sanity checking like the ,/- operators only have 2 items in the list
 	// That anything with a valid operator has >1 item in the list
 	running_total := 0
 	first_run := true
-	if (i.list == nil) {
+	if (i.list == nil) || (len(i.list) == 0) {
 		// This is a source value
 		return i.Val
-	} else if (len(i.list)<2) {
+	} else if len(i.list) == 1 {
+		pretty.Print(i)
 		log.Fatal("Error invalid list length")
 		return 0
 	} else {
@@ -142,24 +214,24 @@ func (i *Number) ProveSol() int {
 				running_total = v.ProveSol()
 			} else {
 				switch i.operation {
-				case "+" :
+				case "+":
 					running_total = running_total + v.ProveSol()
 				case "-":
 					running_total = running_total - v.ProveSol()
 				case "--":
-					running_total =  v.ProveSol() - running_total
+					running_total = v.ProveSol() - running_total
 				case "*":
 					running_total = running_total * v.ProveSol()
 				case "/":
 					running_total = running_total / v.ProveSol()
 				case "\\":
-					running_total =  v.ProveSol() / running_total
+					running_total = v.ProveSol() / running_total
 				default:
 					log.Fatal("Unknown operation type")
 				}
 			}
 		}
-		if (running_total != i.Val) {
+		if running_total != i.Val {
 			pretty.Println(i)
 
 			fmt.Println("We calculated ", running_total, i.ProveIt())
@@ -168,6 +240,7 @@ func (i *Number) ProveSol() int {
 		return running_total
 	}
 }
+
 // CBH rename this function to String()
 func (i *Number) ProveIt() string {
 	var proof string
@@ -286,76 +359,76 @@ func (item *SolLst) CheckDuplicates() {
 	}
 	//fmt.Printf("In Check, OrigLen %d, New Len %d\n",orig_len,len(*item))
 }
-
-func make_2_to_1(list []*Number, found_values *NumMap) []*Number {
-	// This is (conceptually) returning a list of numbers
-	// That can be generated from 2 input numbers
-	// organised in such a way that we know how we created them
-	var ret_list []*Number
-
+func (found_values *NumMap) DoMaths(list []*Number) (num_to_make,
+	add_res, mul_res, sub_res, div_res int,
+	add_set, mul_set, sub_set, div_set, a_gt_b bool) {
 	a := list[0].Val
 	b := list[1].Val
+	add_res = a + b
+	add_set = true
+	mul_set = found_values.UseMult
 	// The thing that slows us down isn't calculations, but channel communications of generating new numbers
 	// allocating memory for new numbers and garbage collecting the pointless old ones
 	// So it's worth spending some CPU working out the useless calculations
 	// And working out exactly what dimension of structure we need to generate
 
-	// CBH Add in check that result!=0
 	a1 := (a == 1)
 	b1 := (b == 1)
-	a_gt_b := (a > b)
-	// If a-b=a then no pount calculating a-b
-	var no_sub bool
-	if a_gt_b {
-		no_sub = (a-b == a)
-	} else {
-		no_sub = (b-a == b)
-	}
-	num_to_make := 1
+	a_gt_b = (a > b)
 
-	var mul_res int
-	if found_values.UseMult {
+	num_to_make = 1
+
+	if mul_set {
 		mul_res = a * b
 		num_to_make++
 	}
 
-	var divd bool
-	var div_res int
-	var sub_res int
 	if a_gt_b {
-		if !no_sub {
-			sub_res = a - b
+
+		sub_res = a - b
+		if (sub_res != a) && (sub_res != 0) {
+			sub_set = true
 			num_to_make++
 		}
 		if (b > 0) && (!b1) && ((a % b) == 0) {
-			divd = true
+			div_set = true
 			div_res = a / b
 			num_to_make++
 		}
 	} else {
-		if !no_sub {
-			sub_res = b - a
+		sub_res = b - a
+
+		if (b-a != b) && (sub_res != 0) {
+			sub_set = true
 			num_to_make++
 
 		}
 		if (a > 0) && (!a1) && ((b % a) == 0) {
-			divd = true
+			div_set = true
 			div_res = b / a
 			num_to_make++
 
 		}
 	}
-	//fmt.Println("Calling")
+	return
+}
+func make_2_to_1(list []*Number, found_values *NumMap) []*Number {
+	// This is (conceptually) returning a list of numbers
+	// That can be generated from 2 input numbers
+	// organised in such a way that we know how we created them
+	var ret_list []*Number
+	num_to_make,
+		add_res, mul_res, sub_res, div_res,
+		_, mul_set, sub_set, div_set,
+		a_gt_b := found_values.DoMaths(list)
+
 	ret_list = found_values.aquire_numbers(num_to_make)
-	//fmt.Println("This is what we got:")
-	//for i,j := range ret_list {
-	//        fmt.Printf("Item %x Pointer %p\n", i,j)
-	//}
+
 	current_number_loc := 0
-	ret_list[current_number_loc].configure(a+b, list, "+", 1)
+	ret_list[current_number_loc].configure(add_res, list, "+", 1)
 	current_number_loc++
 
-	if !no_sub {
+	if sub_set {
 		if a_gt_b {
 			ret_list[current_number_loc].configure(sub_res, list, "-", 1)
 		} else {
@@ -363,11 +436,11 @@ func make_2_to_1(list []*Number, found_values *NumMap) []*Number {
 		}
 		current_number_loc++
 	}
-	if found_values.UseMult {
+	if mul_set {
 		ret_list[current_number_loc].configure(mul_res, list, "*", 2)
 		current_number_loc++
 	}
-	if divd {
+	if div_set {
 		if a_gt_b {
 			ret_list[current_number_loc].configure(div_res, list, "/", 3)
 		} else {
@@ -379,14 +452,6 @@ func make_2_to_1(list []*Number, found_values *NumMap) []*Number {
 	return ret_list
 }
 
-//func (nm *NumMap) aquire_numbers (num_to_make int) []*Number {
-//        tmp_list := make([]Number,num_to_make,4)        // Always allow 4 for cache lines
-//        ret_list := make([]*Number, num_to_make,4)
-//        for i,l := range tmp_list {
-//                ret_list[i] = &l
-//        }
-//	return ret_list
-//}
 func (num *Number) configure(input_a int, input_b []*Number, operation string, difficult int) {
 	num.Val = input_a
 

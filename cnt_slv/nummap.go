@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"sync"
+"github.com/tonnerre/golang-pretty"
 )
 
 type NumMapAtom struct {
@@ -20,6 +21,8 @@ type NumMap struct {
 	input_channel_array chan []NumMapAtom
 	done_channel        chan bool
 	num_struct_queue    chan *Number
+
+	NumPool_2 sync.Pool
 
 	pool_lock sync.Mutex
 	pool_num  []Number
@@ -46,6 +49,16 @@ func NewNumMap(proof_list *SolLst) *NumMap {
 
 	p.num_struct_queue = make(chan *Number, 1024)
 	//go p.generate_number_structs()
+
+
+	p.NumPool_2 = sync.Pool{
+		  New: func() interface{} {
+		      return p.NewPoolI(2)
+	    	},
+	}
+
+
+
 	p.pool_cap = 16
 	p.pool_num = make([]Number, p.pool_cap)
 	p.pool_pnt = make([]*Number, p.pool_cap)
@@ -88,7 +101,7 @@ func (ref *NumMap) Compare(can *NumMap) bool {
 	}
 	return pass
 }
-func (nm *NumMap) aquire_numbers(num_to_make int) []*Number {
+func (nm *NumMap) NewPoolI (num_to_make int) []*Number {
 	pool_num := make([]Number, num_to_make)
 	pool_pnt := make([]*Number, num_to_make)
 	for i, _ := range pool_num {
@@ -98,7 +111,16 @@ func (nm *NumMap) aquire_numbers(num_to_make int) []*Number {
 	return pool_pnt
 }
 
+func (nm *NumMap) aquire_numbers(num_to_make int) []*Number {
+	//if (num_to_make ==2 ) {
+	//	return nm.NumPool_2.Get().([]*Number)
+	//} else {
+		return nm.NewPoolI(num_to_make)
+	//}
+}
+
 func (nm *NumMap) aquire_numbers_pool(num_to_make int) []*Number {
+	log.Fatal()
 	// This function seems like it would be a good idea to reduce load on the malloc
 	// However it seems to make the garbage collector work harder
 	// Which ends up costing us more
@@ -207,13 +229,10 @@ func (item *NumMap) AddProc(proof_list *SolLst) {
 					}
 				}
 			}
-		} else if item.SeekShort {
-			if retr.difficulty > bob.b.difficulty {
-
+		} else if item.SeekShort && (retr.difficulty > bob.b.difficulty) {
 				// In seek short mode, then update when it has a shorter proof
 				item.nmp[bob.a] = bob.b
 				//fmt.Printf("Value %d, = %s, Proof Len is %d, Difficulty is %d\n", bob.b.Val, bob.b.ProveIt(), bob.b.ProofLen(), bob.b.difficulty)
-			}
 		}
 	}
 	waiter := new(sync.WaitGroup)
@@ -240,8 +259,8 @@ func (item *NumMap) AddProc(proof_list *SolLst) {
 	waiter.Wait()
 	if item.SelfTest {
 		check_return_list(*proof_list, item)
+		item.CheckDuplicates(proof_list)
 	}
-	item.CheckDuplicates(proof_list)
 	item.done_channel <- true
 }
 func (item *NumMap) GetVals() []int {
@@ -331,6 +350,51 @@ func (item *NumMap) PrintProofs() {
 	}
 	fmt.Printf("There are:\n%d Numbers\nMin:%4d Max:%4d\n", num_num, min_num, max_num)
 }
+
+
+
+func (nm *NumMap) CleanTree (itm *Number ) {
+        // So this is trying to be out more efficient version of the garbage collector
+        // We start at the top of the tree and look at our value
+        // If the found_values map refers to us then we are used as are all our children and there is nothing to do.
+        // If we are not referred to then perhaps our children will be useful
+	if (itm.Val==142500) {
+		fmt.Println("Cleaning suspect")
+		pretty.Print(itm)
+	}
+        if (nm.nmp[itm.Val] == itm) {
+		//fmt.Println(itm.ProveIt())
+		//fmt.Println(nm.nmp[itm.Val].ProveIt())
+		//fmt.Println("Found a match")
+        } else {
+		// No need to test for nill - Initial data will always be referenced
+		for _,v:= range itm.list {
+			nm.CleanTree(v)
+		}
+		//if len(itm.list)==2 {
+		//	nm.NumPool_2.Put(itm.list)
+		//}
+		itm.list = make([]*Number,0) 
+	}
+	if (itm.Val==142500)  {
+		fmt.Println("Cleaned suspect")
+		pretty.Print(itm)
+	}
+}
+func (nm *NumMap) CleanCol(item *NumCol) {
+        for _, v := range *item {
+		nm.CleanTree(v)
+        }
+}
+func (nm *NumMap) CleanSol(item SolLst) {
+        for _, v := range item {
+                nm.CleanCol(v)
+        }
+}
+
+
+
+
 //func (item *NumMap) generate_number_structs() {
 //	for {
 //		//var new_num_list [] Number

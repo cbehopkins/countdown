@@ -49,7 +49,7 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 		//tmp_b := b.Val
 		//fmt.Println("a nd b", tmp_a,tmp_b);
 		tmp_list = make_2_to_1(array_in[0:2], found_values)
-		found_values.AddMany(tmp_list...) 
+		found_values.AddMany(tmp_list...)
 		ret_list = append(ret_list, &tmp_list, &array_in)
 		return ret_list
 	}
@@ -111,7 +111,12 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 				list[0] = a_num
 				list[1] = b_num
 				product_of_2 = make_2_to_1(list, found_values)
+				for _, v := range product_of_2 {
+					v.ProveSol()
+				}
+
 				//found_values.AddMany(product_of_2...)
+
 				ret_list = append(ret_list, &product_of_2)
 			}
 		}
@@ -119,7 +124,8 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 		// Add on the work unit because that contains sub combinations that may be of use
 		ret_list = append(ret_list, work_unit...)
 	}
-	found_values.AddSol(ret_list) 
+	// Add the entire solution list found in the previous loop in one go
+	found_values.AddSol(ret_list)
 	// This adds about 10% to the run time, but reduces memory to 1/5th
 	ret_list.CheckDuplicates()
 	return ret_list
@@ -128,12 +134,16 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 	fmt.Println("Start Permute")
 	less := func(i, j interface{}) bool {
-		tmp,ok := i.(*Number)
-		if !ok {log.Fatal()}
-		v1:=tmp.Val
-		tmp,ok = j.(*Number)
-		if !ok {log.Fatal()}
-		v2:=tmp.Val
+		tmp, ok := i.(*Number)
+		if !ok {
+			log.Fatal()
+		}
+		v1 := tmp.Val
+		tmp, ok = j.(*Number)
+		if !ok {
+			log.Fatal()
+		}
+		v2 := tmp.Val
 		return v1 < v2
 	}
 	p, err := permutation.NewPerm(array_in, less)
@@ -150,7 +160,7 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 	}
 	var channel_tokens chan bool
 	channel_tokens = make(chan bool, 128)
-	for i := 0; i < 16; i++ {
+	for i := 0; i < 64; i++ {
 		//fmt.Println("Adding token");
 		channel_tokens <- true
 	}
@@ -161,7 +171,7 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 	map_merge_chan = make(chan NumMap)
 	caller := func() {
 		for result, err := p.Next(); err == nil; result, err = p.Next() {
-			// To control the number of workers we run at once we need to grab a token 
+			// To control the number of workers we run at once we need to grab a token
 			// remember to return it later
 			<-channel_tokens
 			fmt.Printf("%3d permutation: left %3d, GoRs %3d\r", p.Index()-1, p.Left(), runtime.NumGoroutine())
@@ -256,7 +266,6 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 	go output_merge()
 	mwg.Wait()
 
-	//fmt.Println("Last Map all done")
 	found_values.LastNumMap()
 
 }

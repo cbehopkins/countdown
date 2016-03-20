@@ -274,7 +274,6 @@ func TestReduction(t *testing.T) {
 	var proof_list2 SolLst
 	proof_list2 = append(proof_list2, proof_list0...)
 	proof_list0.CheckDuplicates()
-	proof_list0.TidySolLst()
 	fmt.Printf("Size Before %d; Size after %d\n", len(proof_list2), len(proof_list0))
 	found_values2 := NewNumMap(&proof_list2)
 	found_values2.SelfTest = true
@@ -287,7 +286,8 @@ func TestReduction(t *testing.T) {
 		fmt.Println("The new FV were different")
 		t.Fail()
 	}
-	found_values0.PrintProofs()
+
+	//found_values0.PrintProofs()
 }
 
 func BenchmarkWorkn(b *testing.B) {
