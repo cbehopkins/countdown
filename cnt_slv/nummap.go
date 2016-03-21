@@ -201,8 +201,6 @@ func (item *NumMap) AddSol(a SolLst) {
 	item.input_channel_array <- arr
 }
 func (item *NumMap) Merge(a *NumMap, report bool) {
-	a.Lock()
-	defer a.Unlock()
 	for i, v := range a.nmp {
 
 		var atomic NumMapAtom

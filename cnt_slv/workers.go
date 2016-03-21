@@ -254,7 +254,7 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 	mwg.Add(2)
 	merge_func_worker := func() {
 		for v := range map_merge_chan {
-			found_values.Merge(v, merge_report)
+			found_values.Merge(&v, merge_report)
 			merge_report = true
 		}
 		mwg.Done()
