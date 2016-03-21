@@ -96,29 +96,52 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 		list_of_1_b = gimmie_1(list_b, found_values)
 
 		// Now Cross work then
+		current_item := 0
+		cross_len := len(list_of_1_a) * len(list_of_1_b)
+		num_items_to_make := cross_len * 2
+		list := make([]*Number, num_items_to_make)
+		num_ret_to_make := 0
+		// So scan through and work out how many items we are going to need
 		for _, a_num := range list_of_1_a {
 			for _, b_num := range list_of_1_b {
+				list[current_item] = a_num
+				list[current_item+1] = b_num
+				tmp,
+					_, _, _, _, _, _, _, _, _ := found_values.DoMaths(list[current_item:(current_item + 2)])
+				num_ret_to_make += tmp
+				current_item = current_item + 2
+			}
+		}
+		current_item = 0
+		// Malloc the memory once!
+		current_number_loc := 0
+		num_list := found_values.aquire_numbers(num_ret_to_make)
+		ret_list = make(SolLst, 0, cross_len)
+
+		for i:=0;i<cross_len; i++ {
 				if found_values.Solved {
 					return ret_list
 				}
-				var product_of_2 NumCol
-				//tmp_a := a_num.Val
-				//tmp_b := b_num.Val
-				//fmt.Println("a nd b", tmp_a,tmp_b);
-				// By experimentation allocating the array here seems to give best performance.
-				// Presumably a lot of the time this gives memory that fits in cache
-				list := make([]*Number, 2)
-				list[0] = a_num
-				list[1] = b_num
-				product_of_2 = make_2_to_1(list, found_values)
-				for _, v := range product_of_2 {
-					v.ProveSol()
+				// We have to re-caclulate
+				num_to_make,
+					add_res, mul_res, sub_res, div_res,
+					add_set, mul_set, sub_set, div_set,
+					a_gt_b := found_values.DoMaths(list[current_item:(current_item + 2)])
+
+				// Populate the part of the return list for this run
+				tmp_list := num_list[current_number_loc:(current_number_loc + num_to_make)]
+				found_values.AddItems(list[current_item:(current_item + 2)], num_list, &current_number_loc,
+					add_res, mul_res, sub_res, div_res,
+					add_set, mul_set, sub_set, div_set,
+					a_gt_b)
+
+				current_item = current_item + 2
+				if found_values.SelfTest {
+					for _, v := range tmp_list {
+						v.ProveSol()
+					}
 				}
-
-				//found_values.AddMany(product_of_2...)
-
-				ret_list = append(ret_list, &product_of_2)
-			}
+				ret_list = append(ret_list, &tmp_list)
 		}
 
 		// Add on the work unit because that contains sub combinations that may be of use

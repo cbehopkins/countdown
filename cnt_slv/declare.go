@@ -210,6 +210,7 @@ func (i *Number) ProveSol() int {
 	} else {
 		for _, v := range i.list {
 			if first_run {
+				//pretty.Print(v)
 				first_run = false
 				running_total = v.ProveSol()
 			} else {
@@ -362,6 +363,7 @@ func (item *SolLst) CheckDuplicates() {
 func (found_values *NumMap) DoMaths(list []*Number) (num_to_make,
 	add_res, mul_res, sub_res, div_res int,
 	add_set, mul_set, sub_set, div_set, a_gt_b bool) {
+
 	a := list[0].Val
 	b := list[1].Val
 	add_res = a + b
@@ -412,42 +414,57 @@ func (found_values *NumMap) DoMaths(list []*Number) (num_to_make,
 	}
 	return
 }
+
+func (found_values *NumMap) AddItems(list []*Number, ret_list []*Number, current_number_loc *int,
+	add_res, mul_res, sub_res, div_res int,
+	add_set, mul_set, sub_set, div_set, a_gt_b bool) {
+	if add_set {
+		ret_list[*current_number_loc].configure(add_res, list, "+", 1)
+		*current_number_loc++
+	}
+
+	if sub_set {
+		if a_gt_b {
+			ret_list[*current_number_loc].configure(sub_res, list, "-", 1)
+		} else {
+			ret_list[*current_number_loc].configure(sub_res, list, "--", 1)
+		}
+		*current_number_loc++
+	}
+	if mul_set {
+		ret_list[*current_number_loc].configure(mul_res, list, "*", 2)
+		*current_number_loc++
+	}
+	if div_set {
+		if a_gt_b {
+			ret_list[*current_number_loc].configure(div_res, list, "/", 3)
+		} else {
+			ret_list[*current_number_loc].configure(div_res, list, "\\", 3)
+		}
+		*current_number_loc++
+	}
+}
 func make_2_to_1(list []*Number, found_values *NumMap) []*Number {
 	// This is (conceptually) returning a list of numbers
 	// That can be generated from 2 input numbers
 	// organised in such a way that we know how we created them
+	if len(list) != 2 {
+		pretty.Print(list)
+		log.Fatal("Invalid make2 list length")
+	}
 	var ret_list []*Number
 	num_to_make,
 		add_res, mul_res, sub_res, div_res,
-		_, mul_set, sub_set, div_set,
+		add_set, mul_set, sub_set, div_set,
 		a_gt_b := found_values.DoMaths(list)
 
 	ret_list = found_values.aquire_numbers(num_to_make)
 
 	current_number_loc := 0
-	ret_list[current_number_loc].configure(add_res, list, "+", 1)
-	current_number_loc++
-
-	if sub_set {
-		if a_gt_b {
-			ret_list[current_number_loc].configure(sub_res, list, "-", 1)
-		} else {
-			ret_list[current_number_loc].configure(sub_res, list, "--", 1)
-		}
-		current_number_loc++
-	}
-	if mul_set {
-		ret_list[current_number_loc].configure(mul_res, list, "*", 2)
-		current_number_loc++
-	}
-	if div_set {
-		if a_gt_b {
-			ret_list[current_number_loc].configure(div_res, list, "/", 3)
-		} else {
-			ret_list[current_number_loc].configure(div_res, list, "\\", 3)
-		}
-		//current_number_loc++
-	}
+	found_values.AddItems(list, ret_list, &current_number_loc,
+		add_res, mul_res, sub_res, div_res,
+		add_set, mul_set, sub_set, div_set,
+		a_gt_b)
 
 	return ret_list
 }
