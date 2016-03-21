@@ -329,6 +329,7 @@ func (bob NumCol) Len() int {
 	return array_len
 }
 func (item *SolLst) CheckDuplicates() {
+	return
 	sol_map := make(map[string]NumCol)
 	var del_queue []int
 	for i := 0; i < len(*item); i++ {

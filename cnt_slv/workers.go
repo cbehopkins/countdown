@@ -6,7 +6,8 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/fighterlyt/permutation"
+	//"github.com/fighterlyt/permutation"
+	"github.com/cbehopkins/permutation"
 	"github.com/tonnerre/golang-pretty"
 )
 
@@ -99,7 +100,8 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 		current_item := 0
 		cross_len := len(list_of_1_a) * len(list_of_1_b)
 		num_items_to_make := cross_len * 2
-		list := make([]*Number, num_items_to_make)
+		//list := make([]*Number, num_items_to_make)
+		list:= found_values.aquire_numbers(num_items_to_make)
 		num_ret_to_make := 0
 		// So scan through and work out how many items we are going to need
 		for _, a_num := range list_of_1_a {
@@ -112,13 +114,16 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 				current_item = current_item + 2
 			}
 		}
-		current_item = 0
+		//rrent_item = 0
 		// Malloc the memory once!
 		current_number_loc := 0
 		num_list := found_values.aquire_numbers(num_ret_to_make)
 		ret_list = make(SolLst, 0, cross_len)
 
-		for i := 0; i < cross_len; i++ {
+		for current_item = 0; current_item < num_items_to_make; current_item = current_item + 2 {
+			// Here we have unrolled the functionality of make_2_to_1
+			// So that it can use a single array
+			// This is all to put less work on the malloc and gc
 			if found_values.Solved {
 				return ret_list
 			}
@@ -135,7 +140,7 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 				add_set, mul_set, sub_set, div_set,
 				a_gt_b)
 
-			current_item = current_item + 2
+			//current_item = current_item + 2
 			if found_values.SelfTest {
 				for _, v := range tmp_list {
 					v.ProveSol()

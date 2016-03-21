@@ -30,13 +30,15 @@ func NewTestSet(target int, seld ...int) *testset {
 	return item
 }
 func init_many() []testset {
-	ret_lst := make([]testset, 4)
-	// Warning there is a bug/feature in permute that it
-	// cannot cope with two of the same value
-	ret_lst[0] = *NewTestSet(833, 50, 3, 4, 1, 10, 7)
+	ret_lst := make([]testset, 8)
+	ret_lst[0] = *NewTestSet(833, 50, 3, 3, 1, 10, 7)
 	ret_lst[1] = *NewTestSet(78, 8, 9, 10, 75, 25, 100)
-	ret_lst[2] = *NewTestSet(540, 3, 5, 7, 2, 4, 8)
-	ret_lst[3] = *NewTestSet(321, 75, 1, 10, 7, 4, 2)
+	ret_lst[2] = *NewTestSet(540,  4,  5,  7 , 2,  4,  8)
+	ret_lst[3] = *NewTestSet(952, 25, 50, 75,100,  3,  6)
+	ret_lst[4] = *NewTestSet(559, 75, 10,  5,  6,  1,  3)
+	ret_lst[5] = *NewTestSet(406, 25, 50, 10,  7,  5,  1)
+        ret_lst[6] = *NewTestSet(269,100, 10,  8,  9,  7,  7)
+        ret_lst[7] = *NewTestSet(277, 75, 10,  6,  3,  5,  4)
 
 	return ret_lst
 }
@@ -129,48 +131,57 @@ func TestMany(t *testing.T) {
 		}
 	}
 }
+func init_fail_many() []testset {
+	ret_lst := make([]testset, 3)
+	ret_lst[0] = *NewTestSet(1000, 8, 9, 10)
+	ret_lst[1] = *NewTestSet(824,  3,  7,  6,  2,  1,  7)
+	ret_lst[2] = *NewTestSet(974,  1,  2,  2 , 3,  3,  7)
+	//ret_lst[3] = *NewTestSet(952, 25, 50, 75,100,  3,  6)
+	//ret_lst[4] = *NewTestSet(559, 75, 10,  5,  6,  1,  3)
+	//ret_lst[5] = *NewTestSet(406, 25, 50, 10,  7,  5,  1)
+        //ret_lst[6] = *NewTestSet(269,100, 10,  8,  9,  7,  7)
+        //ret_lst[7] = *NewTestSet(277, 75, 10,  6,  3,  5,  4)
+	return ret_lst
+}
 
 func TestFail(t *testing.T) {
-	var target int
+	test_set := init_fail_many()
+	for _, item := range test_set {
+		proof_list := *new(SolLst)
+		bob := *new(NumCol)
+		found_values := NewNumMap(&proof_list) //pass it the proof list so it can auto-check for validity at the end
+		found_values.SelfTest = true
+		found_values.UseMult = true
+		return_proofs := make(chan SolLst, 16)
+		for _, itm := range item.Selected {
+			bob.AddNum(itm, found_values)
+		}
+		found_values.SetTarget(item.Target)
+		proof_list = append(proof_list, &bob) // Add on the work item that is the source
 
-	var proof_list SolLst
-	var bob NumCol
-	found_values := NewNumMap(&proof_list) //pass it the proof list so it can auto-check for validity at the end
+		fmt.Println("Starting permute")
+		go PermuteN(bob, found_values, return_proofs)
 
-	found_values.SelfTest = true
-	found_values.UseMult = true
-	bob.AddNum(8, found_values)
-	bob.AddNum(9, found_values)
-	bob.AddNum(10, found_values)
-
-	return_proofs := make(chan SolLst, 16)
-
-	found_values.SetTarget(target)
-	target = 1000 // You can't make 1000 from these input numbers
-
-	proof_list = append(proof_list, &bob) // Add on the work item that is the source
-
-	fmt.Println("Starting permute")
-	go PermuteN(bob, found_values, return_proofs)
-	cleanup_packer := 0
-	for v := range return_proofs {
-
-		if found_values.SelfTest {
-			// This unused code is handy if we want a proof list
-			proof_list = append(proof_list, v...)
-			cleanup_packer++
-			if cleanup_packer > 1000 {
+		cleanup_packer := 0
+		for v := range return_proofs {
+			if found_values.SelfTest {
+				// This unused code is handy if we want a proof list
+				proof_list = append(proof_list, v...)
+				cleanup_packer++
+				if cleanup_packer > 1000 {
 				proof_list.CheckDuplicates()
-				cleanup_packer = 0
+				cleanup_packer = 0	
+				}
 			}
 		}
-	}
-	if found_values.Solved {
-		t.Log("We found an impossible proof")
-		print_proofs(proof_list)
-		t.Fail()
-	} else {
-		t.Log("Failed Correctly")
+	
+		if found_values.Solved {
+			t.Log("We found an impossible proof")
+			print_proofs(proof_list)
+			t.Fail()
+		} else {
+			t.Log("Failed Correctly")
+		}
 	}
 }
 func TestIt(t *testing.T) {
