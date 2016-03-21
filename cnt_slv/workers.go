@@ -118,30 +118,30 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 		num_list := found_values.aquire_numbers(num_ret_to_make)
 		ret_list = make(SolLst, 0, cross_len)
 
-		for i:=0;i<cross_len; i++ {
-				if found_values.Solved {
-					return ret_list
-				}
-				// We have to re-caclulate
-				num_to_make,
-					add_res, mul_res, sub_res, div_res,
-					add_set, mul_set, sub_set, div_set,
-					a_gt_b := found_values.DoMaths(list[current_item:(current_item + 2)])
+		for i := 0; i < cross_len; i++ {
+			if found_values.Solved {
+				return ret_list
+			}
+			// We have to re-caclulate
+			num_to_make,
+				add_res, mul_res, sub_res, div_res,
+				add_set, mul_set, sub_set, div_set,
+				a_gt_b := found_values.DoMaths(list[current_item:(current_item + 2)])
 
-				// Populate the part of the return list for this run
-				tmp_list := num_list[current_number_loc:(current_number_loc + num_to_make)]
-				found_values.AddItems(list[current_item:(current_item + 2)], num_list, &current_number_loc,
-					add_res, mul_res, sub_res, div_res,
-					add_set, mul_set, sub_set, div_set,
-					a_gt_b)
+			// Populate the part of the return list for this run
+			tmp_list := num_list[current_number_loc:(current_number_loc + num_to_make)]
+			found_values.AddItems(list[current_item:(current_item+2)], num_list, &current_number_loc,
+				add_res, mul_res, sub_res, div_res,
+				add_set, mul_set, sub_set, div_set,
+				a_gt_b)
 
-				current_item = current_item + 2
-				if found_values.SelfTest {
-					for _, v := range tmp_list {
-						v.ProveSol()
-					}
+			current_item = current_item + 2
+			if found_values.SelfTest {
+				for _, v := range tmp_list {
+					v.ProveSol()
 				}
-				ret_list = append(ret_list, &tmp_list)
+			}
+			ret_list = append(ret_list, &tmp_list)
 		}
 
 		// Add on the work unit because that contains sub combinations that may be of use
@@ -159,12 +159,12 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 	less := func(i, j interface{}) bool {
 		tmp, ok := i.(*Number)
 		if !ok {
-			log.Fatal()
+			log.Fatal("Can't compare an empty number")
 		}
 		v1 := tmp.Val
 		tmp, ok = j.(*Number)
 		if !ok {
-			log.Fatal()
+			log.Fatal("Can't compare an empty number")
 		}
 		v2 := tmp.Val
 		return v1 < v2

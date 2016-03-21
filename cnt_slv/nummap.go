@@ -118,7 +118,7 @@ func (nm *NumMap) aquire_numbers(num_to_make int) NumCol {
 }
 
 func (nm *NumMap) aquire_numbers_pool(num_to_make int) NumCol {
-	log.Fatal()
+	log.Fatal("aquire_numbers_pool should not be used - FIXME and remove it")
 	// This function seems like it would be a good idea to reduce load on the malloc
 	// However it seems to make the garbage collector work harder
 	// Which ends up costing us more
@@ -200,8 +200,9 @@ func (item *NumMap) AddSol(a SolLst) {
 	}
 	item.input_channel_array <- arr
 }
-func (item *NumMap) Merge(a NumMap, report bool) {
-
+func (item *NumMap) Merge(a *NumMap, report bool) {
+	a.Lock()
+	defer a.Unlock()
 	for i, v := range a.nmp {
 
 		var atomic NumMapAtom
