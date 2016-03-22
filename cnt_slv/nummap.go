@@ -2,7 +2,7 @@ package cnt_slv
 
 import (
 	"fmt"
-//	"log"
+	//	"log"
 	"sync"
 
 	//"github.com/tonnerre/golang-pretty"
@@ -15,7 +15,7 @@ type NumMapAtom struct {
 }
 
 type NumMap struct {
-	map_lock 	    sync.Mutex	// The lock on nmp
+	map_lock            sync.RWMutex // The lock on nmp
 	nmp                 map[int]*Number
 	TargetSet           bool
 	Target              int
@@ -26,6 +26,7 @@ type NumMap struct {
 
 	NumPool_2 sync.Pool
 
+	const_lk  sync.RWMutex
 	Solved    bool
 	SeekShort bool
 	UseMult   bool
@@ -43,7 +44,6 @@ func NewNumMap(proof_list *SolLst) *NumMap {
 	go p.AddProc(proof_list)
 
 	p.num_struct_queue = make(chan *Number, 1024)
-	//go p.generate_number_structs()
 
 	p.NumPool_2 = sync.Pool{
 		New: func() interface{} {
@@ -95,10 +95,10 @@ func (nm *NumMap) NewPoolI(num_to_make int) NumCol {
 }
 
 func (nm *NumMap) aquire_numbers(num_to_make int) NumCol {
-	if (num_to_make ==2 ) {
+	if num_to_make == 2 {
 		return nm.NumPool_2.Get().(NumCol)
 	} else {
-	return nm.NewPoolI(num_to_make)
+		return nm.NewPoolI(num_to_make)
 	}
 }
 
@@ -125,6 +125,7 @@ func (item *NumMap) AddSol(a SolLst) {
 	item.map_lock.Lock()
 	for _, b := range a {
 		for _, c := range *b {
+			//fmt.Println("Ading Value:", c.Val)
 			item.add_item(c.Val, c, false)
 		}
 	}
@@ -141,25 +142,41 @@ func (item *NumMap) Merge(a *NumMap, report bool) {
 	}
 }
 
-func (item *NumMap) add_item (value int, stct *Number, report bool) {
-		retr, ok := item.nmp[value]
-		if !ok {
-			item.nmp[value] = stct
-			if item.TargetSet {
-				if value == item.Target {
-					proof_string := stct.ProveIt()
-					fmt.Printf("Value %d, = %s, Proof Len is %d, Difficulty is %d\n", value, proof_string, stct.ProofLen(), stct.difficulty)
-					if !item.SeekShort {
-						item.Solved = true
-					}
+func (item *NumMap) add_item(value int, stct *Number, report bool) {
+	// The lock on the map structure must be grabbed outside
+	retr, ok := item.nmp[value]
+	item.const_lk.RLock()
+	//defer item.const_lk.RUnlock()
+	if !ok {
+		item.nmp[value] = stct
+		if item.TargetSet {
+			if value == item.Target {
+
+				proof_string := stct.ProveIt()
+				fmt.Printf("Value %d, = %s, Proof Len is %d, Difficulty is %d\n", value, proof_string, stct.ProofLen(), stct.difficulty)
+				if !item.SeekShort {
+					item.const_lk.RUnlock()
+					item.const_lk.Lock()
+					item.Solved = true
+					item.const_lk.Unlock()
 				}
+			} else {
+				item.const_lk.RUnlock()
 			}
-		} else if item.SeekShort && (retr.difficulty > stct.difficulty) {
-			// In seek short mode, then update when it has a shorter proof
-			item.nmp[value] = stct
-			//fmt.Printf("Value %d, = %s, Proof Len is %d, Difficulty is %d\n", bob.b.Val, bob.b.ProveIt(), bob.b.ProofLen(), bob.b.difficulty)
+		} else {
+			item.const_lk.RUnlock()
 		}
+
+	} else if item.SeekShort && (retr.difficulty > stct.difficulty) {
+		item.const_lk.RUnlock()
+		// In seek short mode, then update when it has a shorter proof
+		item.nmp[value] = stct
+
+		//fmt.Printf("Value %d, = %s, Proof Len is %d, Difficulty is %d\n", bob.b.Val, bob.b.ProveIt(), bob.b.ProofLen(), bob.b.difficulty)
+	} else {
+		item.const_lk.RUnlock()
 	}
+}
 func (item *NumMap) AddProc(proof_list *SolLst) {
 	waiter := new(sync.WaitGroup)
 	waiter.Add(2)
@@ -182,10 +199,6 @@ func (item *NumMap) AddProc(proof_list *SolLst) {
 		waiter.Done()
 	}()
 	waiter.Wait()
-	if item.SelfTest {
-		check_return_list(*proof_list, item)
-		item.CheckDuplicates(proof_list)
-	}
 	item.done_channel <- true
 }
 func (item *NumMap) GetVals() []int {
@@ -244,8 +257,10 @@ func (item *NumMap) LastNumMap() {
 }
 func (item *NumMap) SetTarget(target int) {
 	fmt.Println("Setting target to ", target)
+	item.const_lk.Lock()
 	item.TargetSet = true
 	item.Target = target
+	item.const_lk.Unlock()
 }
 func (item *NumMap) PrintProofs() {
 	min_num := 1000

@@ -33,12 +33,12 @@ func init_many() []testset {
 	ret_lst := make([]testset, 8)
 	ret_lst[0] = *NewTestSet(833, 50, 3, 3, 1, 10, 7)
 	ret_lst[1] = *NewTestSet(78, 8, 9, 10, 75, 25, 100)
-	ret_lst[2] = *NewTestSet(540,  4,  5,  7 , 2,  4,  8)
-	ret_lst[3] = *NewTestSet(952, 25, 50, 75,100,  3,  6)
-	ret_lst[4] = *NewTestSet(559, 75, 10,  5,  6,  1,  3)
-	ret_lst[5] = *NewTestSet(406, 25, 50, 10,  7,  5,  1)
-        ret_lst[6] = *NewTestSet(269,100, 10,  8,  9,  7,  7)
-        ret_lst[7] = *NewTestSet(277, 75, 10,  6,  3,  5,  4)
+	ret_lst[2] = *NewTestSet(540, 4, 5, 7, 2, 4, 8)
+	ret_lst[3] = *NewTestSet(952, 25, 50, 75, 100, 3, 6)
+	ret_lst[4] = *NewTestSet(559, 75, 10, 5, 6, 1, 3)
+	ret_lst[5] = *NewTestSet(406, 25, 50, 10, 7, 5, 1)
+	ret_lst[6] = *NewTestSet(269, 100, 10, 8, 9, 7, 7)
+	ret_lst[7] = *NewTestSet(277, 75, 10, 6, 3, 5, 4)
 
 	return ret_lst
 }
@@ -76,6 +76,7 @@ func TestOne(t *testing.T) {
 			proof_list = append(proof_list, v...)
 			cleanup_packer++
 			if cleanup_packer > 1000 {
+				check_return_list(proof_list, found_values)
 				proof_list.CheckDuplicates()
 				cleanup_packer = 0
 			}
@@ -134,13 +135,13 @@ func TestMany(t *testing.T) {
 func init_fail_many() []testset {
 	ret_lst := make([]testset, 3)
 	ret_lst[0] = *NewTestSet(1000, 8, 9, 10)
-	ret_lst[1] = *NewTestSet(824,  3,  7,  6,  2,  1,  7)
-	ret_lst[2] = *NewTestSet(974,  1,  2,  2 , 3,  3,  7)
+	ret_lst[1] = *NewTestSet(824, 3, 7, 6, 2, 1, 7)
+	ret_lst[2] = *NewTestSet(974, 1, 2, 2, 3, 3, 7)
 	//ret_lst[3] = *NewTestSet(952, 25, 50, 75,100,  3,  6)
 	//ret_lst[4] = *NewTestSet(559, 75, 10,  5,  6,  1,  3)
 	//ret_lst[5] = *NewTestSet(406, 25, 50, 10,  7,  5,  1)
-        //ret_lst[6] = *NewTestSet(269,100, 10,  8,  9,  7,  7)
-        //ret_lst[7] = *NewTestSet(277, 75, 10,  6,  3,  5,  4)
+	//ret_lst[6] = *NewTestSet(269,100, 10,  8,  9,  7,  7)
+	//ret_lst[7] = *NewTestSet(277, 75, 10,  6,  3,  5,  4)
 	return ret_lst
 }
 
@@ -169,12 +170,12 @@ func TestFail(t *testing.T) {
 				proof_list = append(proof_list, v...)
 				cleanup_packer++
 				if cleanup_packer > 1000 {
-				proof_list.CheckDuplicates()
-				cleanup_packer = 0	
+					proof_list.CheckDuplicates()
+					cleanup_packer = 0
 				}
 			}
 		}
-	
+
 		if found_values.Solved {
 			t.Log("We found an impossible proof")
 			print_proofs(proof_list)
