@@ -412,33 +412,33 @@ func (found_values *NumMap) DoMaths(list []*Number) (num_to_make,
 	return
 }
 
-func (found_values *NumMap) AddItems(list []*Number, ret_list []*Number, current_number_loc *int,
+func (found_values *NumMap) AddItems(list []*Number, ret_list []*Number, current_number_loc int,
 	add_res, mul_res, sub_res, div_res int,
 	add_set, mul_set, sub_set, div_set, a_gt_b bool) {
 	if add_set {
-		ret_list[*current_number_loc].configure(add_res, list, "+", 1)
-		*current_number_loc++
+		ret_list[current_number_loc].configure(add_res, list, "+", 1)
+		current_number_loc++
 	}
 
 	if sub_set {
 		if a_gt_b {
-			ret_list[*current_number_loc].configure(sub_res, list, "-", 1)
+			ret_list[current_number_loc].configure(sub_res, list, "-", 1)
 		} else {
-			ret_list[*current_number_loc].configure(sub_res, list, "--", 1)
+			ret_list[current_number_loc].configure(sub_res, list, "--", 1)
 		}
-		*current_number_loc++
+		current_number_loc++
 	}
 	if mul_set {
-		ret_list[*current_number_loc].configure(mul_res, list, "*", 2)
-		*current_number_loc++
+		ret_list[current_number_loc].configure(mul_res, list, "*", 2)
+		current_number_loc++
 	}
 	if div_set {
 		if a_gt_b {
-			ret_list[*current_number_loc].configure(div_res, list, "/", 3)
+			ret_list[current_number_loc].configure(div_res, list, "/", 3)
 		} else {
-			ret_list[*current_number_loc].configure(div_res, list, "\\", 3)
+			ret_list[current_number_loc].configure(div_res, list, "\\", 3)
 		}
-		*current_number_loc++
+		current_number_loc++
 	}
 }
 func make_2_to_1(list []*Number, found_values *NumMap) NumCol {
@@ -459,7 +459,7 @@ func make_2_to_1(list []*Number, found_values *NumMap) NumCol {
 	ret_list = found_values.aquire_numbers(num_to_make)
 
 	current_number_loc := 0
-	found_values.AddItems(list, ret_list, &current_number_loc,
+	found_values.AddItems(list, ret_list, current_number_loc,
 		add_res, mul_res, sub_res, div_res,
 		add_set, mul_set, sub_set, div_set,
 		a_gt_b)

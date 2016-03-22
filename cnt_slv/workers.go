@@ -153,11 +153,11 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 
 			// Populate the part of the return list for this run
 			tmp_list := num_list[current_number_loc:(current_number_loc + num_to_make)]
-			found_values.AddItems(list[current_item:(current_item+2)], num_list, &current_number_loc,
+			found_values.AddItems(list[current_item:(current_item+2)], num_list, current_number_loc,
 				add_res, mul_res, sub_res, div_res,
 				add_set, mul_set, sub_set, div_set,
 				a_gt_b)
-
+			current_number_loc += num_to_make
 			//current_item = current_item + 2
 			if found_values.SelfTest {
 				for _, v := range tmp_list {
@@ -206,8 +206,8 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 		comms_channels[i] = make(chan SolLst, 200)
 	}
 	var channel_tokens chan bool
-	channel_tokens = make(chan bool, 128)
-	for i := 0; i < 64; i++ {
+	channel_tokens = make(chan bool, 512)
+	for i := 0; i < 256; i++ {
 		//fmt.Println("Adding token");
 		channel_tokens <- true
 	}

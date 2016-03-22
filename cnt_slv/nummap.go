@@ -181,28 +181,28 @@ func (item *NumMap) AddMany(b ...*Number) {
 }
 
 func (item *NumMap) AddSol(a SolLst) {
-	arr_len := 0
-	for _, b := range a {
-		arr_len = arr_len + len(*b)
-	}
+	//arr_len := 0
+	//for _, b := range a {
+	//	arr_len = arr_len + len(*b)
+	//}
 
-	arr := make([]NumMapAtom, arr_len)
-	i := 0
-	//item.map_lock.Lock()
+	//arr := make([]NumMapAtom, arr_len)
+	//i := 0
+	item.map_lock.Lock()
 	for _, b := range a {
 		for _, c := range *b {
-			var atomic NumMapAtom
-			atomic.a = c.Val
-			atomic.b = c
-			atomic.report = false
-			//item.add_item(atomic)
-			arr = append(arr,atomic)
-			arr[i] = atomic
-			i++
+			//var atomic NumMapAtom
+			//atomic.a = c.Val
+			//atomic.b = c
+			//atomic.report = false
+			item.add_item(c.Val, c, false)
+			//arr = append(arr,atomic)
+			//arr[i] = atomic
+			//i++
 		}
 	}
-	//item.map_lock.Unlock()
-	item.input_channel_array <- arr
+	item.map_lock.Unlock()
+	//item.input_channel_array <- arr
 }
 func (item *NumMap) Merge(a *NumMap, report bool) {
 	for i, v := range a.nmp {
@@ -216,22 +216,22 @@ func (item *NumMap) Merge(a *NumMap, report bool) {
 	}
 }
 
-func (item *NumMap) add_item (bob NumMapAtom) {
-		retr, ok := item.nmp[bob.a]
+func (item *NumMap) add_item (value int, stct *Number, report bool) {
+		retr, ok := item.nmp[value]
 		if !ok {
-			item.nmp[bob.a] = bob.b
+			item.nmp[value] = stct
 			if item.TargetSet {
-				if bob.a == item.Target {
-					proof_string := bob.b.ProveIt()
-					fmt.Printf("Value %d, = %s, Proof Len is %d, Difficulty is %d\n", bob.b.Val, proof_string, bob.b.ProofLen(), bob.b.difficulty)
+				if value == item.Target {
+					proof_string := stct.ProveIt()
+					fmt.Printf("Value %d, = %s, Proof Len is %d, Difficulty is %d\n", value, proof_string, stct.ProofLen(), stct.difficulty)
 					if !item.SeekShort {
 						item.Solved = true
 					}
 				}
 			}
-		} else if item.SeekShort && (retr.difficulty > bob.b.difficulty) {
+		} else if item.SeekShort && (retr.difficulty > stct.difficulty) {
 			// In seek short mode, then update when it has a shorter proof
-			item.nmp[bob.a] = bob.b
+			item.nmp[value] = stct
 			//fmt.Printf("Value %d, = %s, Proof Len is %d, Difficulty is %d\n", bob.b.Val, bob.b.ProveIt(), bob.b.ProofLen(), bob.b.difficulty)
 		}
 	}
@@ -242,7 +242,7 @@ func (item *NumMap) AddProc(proof_list *SolLst) {
 		for fred := range item.input_channel_array {
 			item.map_lock.Lock()
 			for _, bob := range fred {
-				item.add_item(bob)
+				item.add_item(bob.a, bob.b, false)
 			}
 			item.map_lock.Unlock()
 		}
@@ -251,7 +251,7 @@ func (item *NumMap) AddProc(proof_list *SolLst) {
 	go func() {
 		for bob := range item.input_channel {
 			item.map_lock.Lock()
-			item.add_item(bob)
+			item.add_item(bob.a, bob.b, false)
 			item.map_lock.Unlock()
 		}
 		waiter.Done()
