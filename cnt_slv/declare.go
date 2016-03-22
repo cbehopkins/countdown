@@ -64,10 +64,10 @@ func (i *Number) TidyDoubles() {
 		return
 	}
 	// CBH get this from the central allocator
-	temp_array := make([]*Number, 2)
-	temp_array[0] = i.list[1]
-	temp_array[1] = i.list[0]
-	i.list = temp_array
+	//temp_array := make([]*Number, 2)
+	//temp_array[0] = i.list[1]
+	//temp_array[1] = i.list[0]
+	i.list = NumCol{i.list[1],i.list[0]}
 	return
 }
 func (i *Number) TidyOperators() {

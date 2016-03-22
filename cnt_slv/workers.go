@@ -5,51 +5,51 @@ import (
 	"log"
 	"runtime"
 	"sync"
-
+	"errors"
 	//"github.com/fighterlyt/permutation"
 	"github.com/cbehopkins/permutation"
 	"github.com/tonnerre/golang-pretty"
 )
 
-func gimmie_1(array_in SolLst, found_values *NumMap) NumCol {
-	var ret_list NumCol
-	// This function takes in a list of numbers and tries to return a list of numbers
-	// One would think we only needed one of each number
-	// i.e. why would we need more than one 3?
-	// because we need to say 6=(3+(7-4))
-	// So previous to this we've called work_n on an input set e.g {2,3,4,5}
-	// and got a list of solutions: {{{2},{3+4+5}}, {{2,3}, {4+5}}, {{2+3}, {4,5}},...}
-	// And what we want to know is all the numberswe can play with.
-	// i.e. we have {2} and {3+4+5} and {2,3} and {4+5}  and ...
-	// and therefore we return
-	// {2,(3+4+5),2,3,(4+5)}
-	// However that does not mean that we can't have some level of duplication.
-
-	len_array_needed := 0
-	for _, v := range array_in {
-		// We're scanning through working out how big on an array we need to allocate
-		len_array_needed = len_array_needed + v.Len()
+type Gimmie struct {
+	sol_list []*NumCol
+	inner int
+	outer int
+	sent bool
+}
+func NewGimmie (array_in SolLst) *Gimmie {
+	//type NumCol []*Number
+	//type SolLst []*NumCol
+	itm := new(Gimmie)
+	itm.sol_list = array_in
+	return itm
+}
+func (g *Gimmie) Items () (items int) {
+	for _, v := range g.sol_list {
+		items = items + v.Len()
 	}
-	//local_map := make(map [int]struct{})
-	ret_list = make(NumCol, 0, len_array_needed) // Length is zero capacity is as needed - we may need far fewer items in the array
-	for _, v := range array_in {
-		// Append should only increase the size of the array if needed
-		// Because we have calculuated it previously this should not be needed
-		// and this is reduced to a copying exercise
-		ret_list = append(ret_list, *v...)
-		//for _, w := range *v {
-		//	_,ok := local_map[w.Val]
-		//	if ok {
-		//	} else {
-		//		local_map[w.Val] = *new(struct{})
-		//		ret_list = append(ret_list,*w)
-		//	}
-		//}
-	}
-
-	return ret_list
+	return items
+}
+func (g *Gimmie) Reset () () {
+	g.sent = false
+	g.outer = 0
+	g.inner = 0
 }
 
+func (g *Gimmie) Next () (result *Number, err error) {
+	for ;g.outer<len(g.sol_list); g.outer++ {
+		in_lst_p := g.sol_list[g.outer]
+		in_lst := *in_lst_p	// It's okay these should be stack variables as they do not leave the scope
+		for g.inner<len(in_lst) {
+			result = in_lst[g.inner]
+			g.inner++
+			return 
+		}
+		g.inner=0
+	}
+	err = errors.New("No More to give you")
+	return 
+}
 func work_n(array_in NumCol, found_values *NumMap) SolLst {
 	var ret_list SolLst
 	len_array_in := len(array_in)
@@ -57,17 +57,10 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 		return ret_list
 	}
 	if len_array_in == 1 {
-		ret_list = append(ret_list, &array_in)
-		return ret_list
+		//ret_list = append(ret_list, &array_in)
+		return SolLst{&array_in}
 	} else if len_array_in == 2 {
-		//var a, b *Number
-		//a = array_in[0]
-		//b = array_in[1]
 		var tmp_list NumCol
-
-		//tmp_a := a.Val
-		//tmp_b := b.Val
-		//fmt.Println("a nd b", tmp_a,tmp_b);
 		tmp_list = make_2_to_1(array_in[0:2], found_values)
 		found_values.AddMany(tmp_list...)
 		ret_list = append(ret_list, &tmp_list, &array_in)
@@ -111,20 +104,17 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 		list_b = work_n(*unit_b, found_values)
 
 		// Now we want two list of numbers to cross against each other
-		var list_of_1_a, list_of_1_b NumCol
-		list_of_1_a = gimmie_1(list_a, found_values)
-		list_of_1_b = gimmie_1(list_b, found_values)
-
+		gimmie_a := NewGimmie(list_a)
+		gimmie_b := NewGimmie(list_b)
 		// Now Cross work then
 		current_item := 0
-		cross_len := len(list_of_1_a) * len(list_of_1_b)
+		cross_len := gimmie_a.Items() * gimmie_b.Items()
 		num_items_to_make := cross_len * 2
-		//list := make([]*Number, num_items_to_make)
 		list:= found_values.aquire_numbers(num_items_to_make)
 		num_ret_to_make := 0
 		// So scan through and work out how many items we are going to need
-		for _, a_num := range list_of_1_a {
-			for _, b_num := range list_of_1_b {
+		for a_num,err_a := gimmie_a.Next(); err_a==nil;a_num,err_a = gimmie_a.Next() {
+			for b_num,err_b := gimmie_b.Next();err_b==nil ;b_num,err_b = gimmie_b.Next() {
 				list[current_item] = a_num
 				list[current_item+1] = b_num
 				tmp,
@@ -132,6 +122,7 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 				num_ret_to_make += tmp
 				current_item = current_item + 2
 			}
+			gimmie_b.Reset()
 		}
 		//current_item = 0
 		// Malloc the memory once!
@@ -158,7 +149,6 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 				add_set, mul_set, sub_set, div_set,
 				a_gt_b)
 			current_number_loc += num_to_make
-			//current_item = current_item + 2
 			if found_values.SelfTest {
 				for _, v := range tmp_list {
 					v.ProveSol()
