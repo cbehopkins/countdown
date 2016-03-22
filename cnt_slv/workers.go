@@ -14,18 +14,37 @@ import (
 func gimmie_1(array_in SolLst, found_values *NumMap) NumCol {
 	var ret_list NumCol
 	// This function takes in a list of numbers and tries to return a list of numbers
+	// One would think we only needed one of each number
+	// i.e. why would we need more than one 3?
+	// because we need to say 6=(3+(7-4))
+	// So previous to this we've called work_n on an input set e.g {2,3,4,5}
+	// and got a list of solutions: {{{2},{3+4+5}}, {{2,3}, {4+5}}, {{2+3}, {4,5}},...}
+	// And what we want to know is all the numberswe can play with.
+	// i.e. we have {2} and {3+4+5} and {2,3} and {4+5}  and ...
+	// and therefore we return
+	// {2,(3+4+5),2,3,(4+5)}
+	// However that does not mean that we can't have some level of duplication.
+
 	len_array_needed := 0
 	for _, v := range array_in {
 		// We're scanning through working out how big on an array we need to allocate
 		len_array_needed = len_array_needed + v.Len()
 	}
-
-	ret_list = make(NumCol, 0, len_array_needed) // Length is zero capacity is as needed
+	//local_map := make(map [int]struct{})
+	ret_list = make(NumCol, 0, len_array_needed) // Length is zero capacity is as needed - we may need far fewer items in the array
 	for _, v := range array_in {
 		// Append should only increase the size of the array if needed
 		// Because we have calculuated it previously this should not be needed
 		// and this is reduced to a copying exercise
 		ret_list = append(ret_list, *v...)
+		//for _, w := range *v {
+		//	_,ok := local_map[w.Val]
+		//	if ok {
+		//	} else {
+		//		local_map[w.Val] = *new(struct{})
+		//		ret_list = append(ret_list,*w)
+		//	}
+		//}
 	}
 
 	return ret_list
@@ -88,7 +107,7 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 
 		var list_a SolLst
 		var list_b SolLst
-		list_a = work_n(*unit_a, found_values)
+		list_a = work_n(*unit_a, found_values)	// return a list of everything that can be done with this set
 		list_b = work_n(*unit_b, found_values)
 
 		// Now we want two list of numbers to cross against each other
@@ -114,12 +133,11 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 				current_item = current_item + 2
 			}
 		}
-		//rrent_item = 0
+		//current_item = 0
 		// Malloc the memory once!
 		current_number_loc := 0
 		num_list := found_values.aquire_numbers(num_ret_to_make)
 		ret_list = make(SolLst, 0, cross_len)
-
 		for current_item = 0; current_item < num_items_to_make; current_item = current_item + 2 {
 			// Here we have unrolled the functionality of make_2_to_1
 			// So that it can use a single array
@@ -151,6 +169,7 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 
 		// Add on the work unit because that contains sub combinations that may be of use
 		ret_list = append(ret_list, work_unit...)
+		if false {ret_list.TidySolLst()}
 	}
 	// Add the entire solution list found in the previous loop in one go
 	found_values.AddSol(ret_list)

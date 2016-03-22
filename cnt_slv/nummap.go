@@ -5,7 +5,7 @@ import (
 	"log"
 	"sync"
 
-	"github.com/tonnerre/golang-pretty"
+	//"github.com/tonnerre/golang-pretty"
 )
 
 type NumMapAtom struct {
@@ -15,6 +15,7 @@ type NumMapAtom struct {
 }
 
 type NumMap struct {
+	map_lock 	    sync.Mutex	// The lock on nmp
 	nmp                 map[int]*Number
 	TargetSet           bool
 	Target              int
@@ -110,11 +111,11 @@ func (nm *NumMap) NewPoolI(num_to_make int) NumCol {
 }
 
 func (nm *NumMap) aquire_numbers(num_to_make int) NumCol {
-	//if (num_to_make ==2 ) {
-	//	return nm.NumPool_2.Get().([]*Number)
-	//} else {
+	if (num_to_make ==2 ) {
+		return nm.NumPool_2.Get().(NumCol)
+	} else {
 	return nm.NewPoolI(num_to_make)
-	//}
+	}
 }
 
 func (nm *NumMap) aquire_numbers_pool(num_to_make int) NumCol {
@@ -162,7 +163,7 @@ func (nm *NumMap) aquire_numbers_pool(num_to_make int) NumCol {
 
 func (item *NumMap) Add(a int, b *Number) {
 	var atomic NumMapAtom
-	atomic.a = a
+	atomic.a = b.Val
 	atomic.b = b
 	atomic.report = false
 	item.input_channel <- atomic
@@ -187,17 +188,20 @@ func (item *NumMap) AddSol(a SolLst) {
 
 	arr := make([]NumMapAtom, arr_len)
 	i := 0
+	//item.map_lock.Lock()
 	for _, b := range a {
 		for _, c := range *b {
 			var atomic NumMapAtom
 			atomic.a = c.Val
 			atomic.b = c
 			atomic.report = false
-			//arr = append(arr,atomic)
+			//item.add_item(atomic)
+			arr = append(arr,atomic)
 			arr[i] = atomic
 			i++
 		}
 	}
+	//item.map_lock.Unlock()
 	item.input_channel_array <- arr
 }
 func (item *NumMap) Merge(a *NumMap, report bool) {
@@ -212,8 +216,7 @@ func (item *NumMap) Merge(a *NumMap, report bool) {
 	}
 }
 
-func (item *NumMap) AddProc(proof_list *SolLst) {
-	add_item := func(bob NumMapAtom) {
+func (item *NumMap) add_item (bob NumMapAtom) {
 		retr, ok := item.nmp[bob.a]
 		if !ok {
 			item.nmp[bob.a] = bob.b
@@ -232,24 +235,24 @@ func (item *NumMap) AddProc(proof_list *SolLst) {
 			//fmt.Printf("Value %d, = %s, Proof Len is %d, Difficulty is %d\n", bob.b.Val, bob.b.ProveIt(), bob.b.ProofLen(), bob.b.difficulty)
 		}
 	}
+func (item *NumMap) AddProc(proof_list *SolLst) {
 	waiter := new(sync.WaitGroup)
 	waiter.Add(2)
-	var local_lock sync.Mutex
 	go func() {
 		for fred := range item.input_channel_array {
-			local_lock.Lock()
+			item.map_lock.Lock()
 			for _, bob := range fred {
-				add_item(bob)
+				item.add_item(bob)
 			}
-			local_lock.Unlock()
+			item.map_lock.Unlock()
 		}
 		waiter.Done()
 	}()
 	go func() {
 		for bob := range item.input_channel {
-			local_lock.Lock()
-			add_item(bob)
-			local_lock.Unlock()
+			item.map_lock.Lock()
+			item.add_item(bob)
+			item.map_lock.Unlock()
 		}
 		waiter.Done()
 	}()
@@ -273,6 +276,10 @@ func (item *NumMap) GetVals() []int {
 }
 
 func (item *NumMap) CheckDuplicates(proof_list *SolLst) {
+	// Each item in proof_list is a list of numbers
+	// It's possible the same number list could be repeated
+	// Delete these duplicates
+
 	set_list_map := make(map[string]NumCol)
 	//fmt.Printf("Checking for duplicates in Proof\n");
 	var tpp SolLst
@@ -316,7 +323,6 @@ func (item *NumMap) SetTarget(target int) {
 	fmt.Println("Setting target to ", target)
 	item.TargetSet = true
 	item.Target = target
-	fmt.Println("Target is now ", item.Target)
 }
 func (item *NumMap) PrintProofs() {
 	min_num := 1000
@@ -347,62 +353,3 @@ func (item *NumMap) PrintProofs() {
 	}
 	fmt.Printf("There are:\n%d Numbers\nMin:%4d Max:%4d\n", num_num, min_num, max_num)
 }
-
-func (nm *NumMap) CleanTree(itm *Number) {
-	// So this is trying to be out more efficient version of the garbage collector
-	// We start at the top of the tree and look at our value
-	// If the found_values map refers to us then we are used as are all our children and there is nothing to do.
-	// If we are not referred to then perhaps our children will be useful
-	if itm.Val == 142500 {
-		fmt.Println("Cleaning suspect")
-		pretty.Print(itm)
-	}
-	if nm.nmp[itm.Val] == itm {
-		//fmt.Println(itm.ProveIt())
-		//fmt.Println(nm.nmp[itm.Val].ProveIt())
-		//fmt.Println("Found a match")
-	} else {
-		// No need to test for nill - Initial data will always be referenced
-		for _, v := range itm.list {
-			nm.CleanTree(v)
-		}
-		//if len(itm.list)==2 {
-		//	nm.NumPool_2.Put(itm.list)
-		//}
-		itm.list = make([]*Number, 0)
-	}
-	if itm.Val == 142500 {
-		fmt.Println("Cleaned suspect")
-		pretty.Print(itm)
-	}
-}
-func (nm *NumMap) CleanCol(item *NumCol) {
-	for _, v := range *item {
-		nm.CleanTree(v)
-	}
-}
-func (nm *NumMap) CleanSol(item SolLst) {
-	for _, v := range item {
-		nm.CleanCol(v)
-	}
-}
-
-//func (item *NumMap) generate_number_structs() {
-//	for {
-//		//var new_num_list [] Number
-//		//new_num_list = make([]Number, 16)
-//		//fmt.Println("new_num_list is::::")
-//		//pretty.Println(new_num_list)
-//		//for i,v:= range new_num_list {
-//		//  var ttmp *Number
-//		//  ttmp = &v
-//		//  fmt.Printf("Adding %d, %p\n",i, ttmp)
-//		//  item.num_struct_queue <- ttmp
-//		//}
-//		var tmp_var Number
-//		//var_array := make([]Number, 1024)
-//		//for _, itm := range var_array {
-//		item.num_struct_queue <- &tmp_var
-//		//}
-//	}
-//}

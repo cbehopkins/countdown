@@ -152,7 +152,7 @@ func (i *Number) TidyOperators() {
 			my_list1[1] = b_plus_c
 			new_num := new_number(i.Val, my_list1, "-", (b_plus_c.difficulty + i.list[0].list[0].difficulty + 1))
 			i = new_num
-			i.TidyOperators()
+			//i.TidyOperators()
 			i.ProveSol() //CBH we've made serious modification so test it
 		} else if i.list[1].operation == "-" {
 			// Transform a-(b-c) -> (a+c)-b
@@ -162,18 +162,18 @@ func (i *Number) TidyOperators() {
 			// c = i.list[1].list[1]
 
 			// create a+c
-			my_list0 := make([]*Number, 2)
+			my_list0 := make(NumCol, 2)
 			my_list0[0] = i.list[0]
 			my_list0[1] = i.list[1].list[1]
 			a_plus_c := new_number((my_list0[0].Val + my_list0[1].Val), my_list0, "+", (my_list0[0].difficulty + my_list0[1].difficulty + 1))
 
-			my_list1 := make([]*Number, 2)
+			my_list1 := make(NumCol, 2)
 			my_list1[0] = a_plus_c
 			my_list1[1] = i.list[1].list[0]
 			new_num := new_number(i.Val, my_list1, "-", (a_plus_c.difficulty + my_list1[1].difficulty + 1))
 
 			i = new_num
-			i.TidyOperators()
+			//i.TidyOperators()
 			i.ProveSol()
 		}
 	}
@@ -387,7 +387,6 @@ func (found_values *NumMap) DoMaths(list []*Number) (num_to_make,
 	}
 
 	if a_gt_b {
-
 		sub_res = a - b
 		if (sub_res != a) && (sub_res != 0) {
 			sub_set = true
@@ -400,17 +399,14 @@ func (found_values *NumMap) DoMaths(list []*Number) (num_to_make,
 		}
 	} else {
 		sub_res = b - a
-
 		if (b-a != b) && (sub_res != 0) {
 			sub_set = true
 			num_to_make++
-
 		}
 		if (a > 0) && (!a1) && ((b % a) == 0) {
 			div_set = true
 			div_res = b / a
 			num_to_make++
-
 		}
 	}
 	return
@@ -445,7 +441,7 @@ func (found_values *NumMap) AddItems(list []*Number, ret_list []*Number, current
 		*current_number_loc++
 	}
 }
-func make_2_to_1(list []*Number, found_values *NumMap) []*Number {
+func make_2_to_1(list []*Number, found_values *NumMap) NumCol {
 	// This is (conceptually) returning a list of numbers
 	// That can be generated from 2 input numbers
 	// organised in such a way that we know how we created them
@@ -453,12 +449,13 @@ func make_2_to_1(list []*Number, found_values *NumMap) []*Number {
 		pretty.Print(list)
 		log.Fatal("Invalid make2 list length")
 	}
-	var ret_list []*Number
+	var ret_list NumCol
 	num_to_make,
 		add_res, mul_res, sub_res, div_res,
 		add_set, mul_set, sub_set, div_set,
 		a_gt_b := found_values.DoMaths(list)
 
+	// Now Grab the memory
 	ret_list = found_values.aquire_numbers(num_to_make)
 
 	current_number_loc := 0
@@ -475,10 +472,13 @@ func (num *Number) configure(input_a int, input_b []*Number, operation string, d
 
 	num.list = input_b
 	num.operation = operation
-	if len(input_b) > 1 {
-		num.difficulty = input_b[0].difficulty + input_b[1].difficulty + difficult
-	} else {
-		num.difficulty = difficult
+	//if len(input_b) > 1 {
+	//	num.difficulty = input_b[0].difficulty + input_b[1].difficulty + difficult
+	//} else {
+	num.difficulty = difficult
+	//}
+	for _,v:= range input_b {
+		num.difficulty = num.difficulty + v.difficulty
 	}
 
 }
