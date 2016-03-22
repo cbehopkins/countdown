@@ -2,7 +2,7 @@ package cnt_slv
 
 import (
 	"fmt"
-	"log"
+//	"log"
 	"sync"
 
 	//"github.com/tonnerre/golang-pretty"
@@ -25,13 +25,6 @@ type NumMap struct {
 	num_struct_queue    chan *Number
 
 	NumPool_2 sync.Pool
-
-//	pool_lock sync.Mutex
-//	pool_num  []Number
-//	pool_pnt  []*Number
-//	pool_pos  int
-//	pool_cap  int
-//	pool_stat int
 
 	Solved    bool
 	SeekShort bool
@@ -56,15 +49,6 @@ func NewNumMap(proof_list *SolLst) *NumMap {
 		New: func() interface{} {
 			return p.NewPoolI(2)
 		},
-	}
-
-	p.pool_cap = 16
-	p.pool_num = make([]Number, p.pool_cap)
-	p.pool_pnt = make([]*Number, p.pool_cap)
-	for i, _ := range p.pool_num {
-		j := &p.pool_num[i]
-		//fmt.Printf("Init %x,Pointer %p\n", i,j)
-		p.pool_pnt[i] = j
 	}
 
 	return p
