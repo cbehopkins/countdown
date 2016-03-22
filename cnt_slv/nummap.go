@@ -26,12 +26,12 @@ type NumMap struct {
 
 	NumPool_2 sync.Pool
 
-	pool_lock sync.Mutex
-	pool_num  []Number
-	pool_pnt  []*Number
-	pool_pos  int
-	pool_cap  int
-	pool_stat int
+//	pool_lock sync.Mutex
+//	pool_num  []Number
+//	pool_pnt  []*Number
+//	pool_pos  int
+//	pool_cap  int
+//	pool_stat int
 
 	Solved    bool
 	SeekShort bool
@@ -118,49 +118,6 @@ func (nm *NumMap) aquire_numbers(num_to_make int) NumCol {
 	}
 }
 
-func (nm *NumMap) aquire_numbers_pool(num_to_make int) NumCol {
-	log.Fatal("aquire_numbers_pool should not be used - FIXME and remove it")
-	// This function seems like it would be a good idea to reduce load on the malloc
-	// However it seems to make the garbage collector work harder
-	// Which ends up costing us more
-	//fmt.Println("Calling aquire_numbers:", num_to_make)
-	nm.pool_lock.Lock()
-	defer nm.pool_lock.Unlock()
-	// TBD make this more efficient by using up the last elements in the previous structure
-	num_in_queue := nm.pool_cap - nm.pool_pos
-
-	if num_to_make > nm.pool_cap {
-		log.Fatal("Requested us to make ", nm.pool_cap)
-	} else if num_in_queue < num_to_make {
-		nm.pool_num = make([]Number, nm.pool_cap)
-		nm.pool_pnt = make([]*Number, nm.pool_cap)
-
-		//fmt.Printf("Reallocared at %x\n", nm.pool_stat)
-		for i, _ := range nm.pool_num {
-			j := &nm.pool_num[i]
-			nm.pool_pnt[i] = j
-		}
-		nm.pool_stat = 0
-		nm.pool_pos = 0
-	} else {
-		//fmt.Printf("Saved allocation\n")
-		nm.pool_stat++
-	}
-	new_end := nm.pool_pos + num_to_make
-
-	//tmp_list := nm.pool_num[nm.pool_pos:new_end]
-	//ret_list := nm.pool_pnt[nm.pool_pos:new_end]
-	old_pool_pos := nm.pool_pos
-	//fmt.Printf("Using position %x and %x\n", old_pool_pos, new_end)
-	//for i,j := range nm.pool_pnt[old_pool_pos:new_end] {
-	//	fmt.Printf("It's %x Pointer %p\n", i,j)
-	//}
-
-	nm.pool_pos = new_end
-	//nm.pool_lock.Unlock()
-	return nm.pool_pnt[old_pool_pos:new_end]
-}
-
 func (item *NumMap) Add(a int, b *Number) {
 	var atomic NumMapAtom
 	atomic.a = b.Val
@@ -181,34 +138,18 @@ func (item *NumMap) AddMany(b ...*Number) {
 }
 
 func (item *NumMap) AddSol(a SolLst) {
-	//arr_len := 0
-	//for _, b := range a {
-	//	arr_len = arr_len + len(*b)
-	//}
-
-	//arr := make([]NumMapAtom, arr_len)
-	//i := 0
 	item.map_lock.Lock()
 	for _, b := range a {
 		for _, c := range *b {
-			//var atomic NumMapAtom
-			//atomic.a = c.Val
-			//atomic.b = c
-			//atomic.report = false
 			item.add_item(c.Val, c, false)
-			//arr = append(arr,atomic)
-			//arr[i] = atomic
-			//i++
 		}
 	}
 	item.map_lock.Unlock()
-	//item.input_channel_array <- arr
 }
 func (item *NumMap) Merge(a *NumMap, report bool) {
 	for i, v := range a.nmp {
 
 		var atomic NumMapAtom
-
 		atomic.a = i
 		atomic.b = v
 		atomic.report = report
@@ -265,7 +206,6 @@ func (item *NumMap) AddProc(proof_list *SolLst) {
 }
 func (item *NumMap) GetVals() []int {
 	ret_list := make([]int, len(item.nmp))
-	//fmt.Printf("\nThere are %d in list\n",len(item.nmp))
 	i := 0
 	for _, v := range item.nmp {
 		//fmt.Printf("v:%d,%d\n",i, v.Val);
@@ -281,7 +221,6 @@ func (item *NumMap) CheckDuplicates(proof_list *SolLst) {
 	// Delete these duplicates
 
 	set_list_map := make(map[string]NumCol)
-	//fmt.Printf("Checking for duplicates in Proof\n");
 	var tpp SolLst
 	tpp = *proof_list
 	var del_queue []int

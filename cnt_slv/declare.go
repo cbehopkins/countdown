@@ -23,10 +23,9 @@ func (i *Number) ProofLen() int {
 	if i.list == nil {
 		cumlen = 1
 	} else {
-		l0 := i.list[0].ProofLen()
-		l1 := i.list[1].ProofLen()
-
-		cumlen = l0 + l1
+		for _,v:= range i.list {
+			cumlen += v.ProofLen()
+		}
 	}
 	return cumlen
 }
@@ -63,10 +62,6 @@ func (i *Number) TidyDoubles() {
 		// Must not be a double operator
 		return
 	}
-	// CBH get this from the central allocator
-	//temp_array := make([]*Number, 2)
-	//temp_array[0] = i.list[1]
-	//temp_array[1] = i.list[0]
 	i.list = NumCol{i.list[1],i.list[0]}
 	return
 }
@@ -472,11 +467,7 @@ func (num *Number) configure(input_a int, input_b []*Number, operation string, d
 
 	num.list = input_b
 	num.operation = operation
-	//if len(input_b) > 1 {
-	//	num.difficulty = input_b[0].difficulty + input_b[1].difficulty + difficult
-	//} else {
 	num.difficulty = difficult
-	//}
 	for _,v:= range input_b {
 		num.difficulty = num.difficulty + v.difficulty
 	}
