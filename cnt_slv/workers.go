@@ -1,7 +1,6 @@
 package cnt_slv
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"runtime"
@@ -11,49 +10,9 @@ import (
 	"github.com/tonnerre/golang-pretty"
 )
 
-type Gimmie struct {
-	sol_list []*NumCol
-	inner    int
-	outer    int
-	sent     bool
-}
-
-func NewGimmie(array_in SolLst) *Gimmie {
-	//type NumCol []*Number
-	//type SolLst []*NumCol
-	itm := new(Gimmie)
-	itm.sol_list = array_in
-	return itm
-}
-func (g *Gimmie) Items() (items int) {
-	for _, v := range g.sol_list {
-		items = items + v.Len()
-	}
-	return items
-}
-func (g *Gimmie) Reset() {
-	g.sent = false
-	g.outer = 0
-	g.inner = 0
-}
-
-func (g *Gimmie) Next() (result *Number, err error) {
-	for ; g.outer < len(g.sol_list); g.outer++ {
-		in_lst_p := g.sol_list[g.outer]
-		in_lst := *in_lst_p // It's okay these should be stack variables as they do not leave the scope
-		for g.inner < len(in_lst) {
-			result = in_lst[g.inner]
-			g.inner++
-			return
-		}
-		g.inner = 0
-	}
-	err = errors.New("No More to give you")
-	return
-}
 func work_n(array_in NumCol, found_values *NumMap) SolLst {
 	var ret_list SolLst
-	len_array_in := len(array_in)
+	len_array_in := array_in.Len()
 	found_values.const_lk.RLock()
 	if found_values.Solved {
 		found_values.const_lk.RLock()
@@ -65,7 +24,7 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 		return SolLst{&array_in}
 	} else if len_array_in == 2 {
 		var tmp_list NumCol
-		tmp_list = make_2_to_1(array_in[0:2], found_values)
+		tmp_list = found_values.make_2_to_1(array_in[0:2])
 		found_values.AddMany(tmp_list...)
 		ret_list = append(ret_list, &tmp_list, &array_in)
 		return ret_list
@@ -94,7 +53,7 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 
 		if found_values.SelfTest {
 			// Sanity check for programming errors
-			work_unit_length := len(work_unit)
+			work_unit_length := work_unit.Len()
 			if work_unit_length != 2 {
 				pretty.Println(work_list)
 				log.Fatalf("Invalid work unit length, %d", work_unit_length)
@@ -123,7 +82,7 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 		for a_num, err_a := gimmie_a.Next(); err_a == nil; a_num, err_a = gimmie_a.Next() {
 			for b_num, err_b := gimmie_b.Next(); err_b == nil; b_num, err_b = gimmie_b.Next() {
 				tmp,
-					_, _, _, _, _ := found_values.DoMaths([]*Number{a_num, b_num})
+					_, _, _, _, _ := found_values.do_maths([]*Number{a_num, b_num})
 				num_numbers_to_make += tmp
 				current_item = current_item + 2
 			}
@@ -136,7 +95,7 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 	// Malloc the memory once!
 	current_number_loc := 0
 	num_list := found_values.aquire_numbers(top_numbers_to_make)
-	ret_list = make(SolLst, 0, (top_ret_to_make + len(work_unit) + len(ret_list)))
+	ret_list = make(SolLst, 0, (top_ret_to_make + work_unit.Len() + ret_list.Len()))
 	// Add on the work unit because that contains sub combinations that may be of use
 	ret_list = append(ret_list, work_unit...)
 	//current_item := 0
@@ -163,7 +122,7 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 				list := []*Number{a_num, b_num}
 				num_to_make,
 					add_set, mul_set, sub_set, div_set,
-					a_gt_b := found_values.DoMaths(list)
+					a_gt_b := found_values.do_maths(list)
 
 				// Populate the part of the return list for this run
 				// This is the arra AddItems will write into
@@ -193,7 +152,14 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 }
 
 func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
-	fmt.Println("Start Permute")
+	// If your number of workers is limited by access to the centralmap
+	// Then we have the ability to use several number maps and then merge them
+	// No system I have access to have enough CPUs for this to be an issue
+	// However the framework seems to be there
+	// TBD make this a comannd line variable
+	var lone_map = true
+
+	//fmt.Println("Start Permute")
 	less := func(i, j interface{}) bool {
 		tmp, ok := i.(*Number)
 		if !ok {
@@ -228,8 +194,8 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 	coallate_chan := make(chan SolLst, 200)
 	coallate_done := make(chan bool, 8)
 
-	var map_merge_chan chan NumMap
-	map_merge_chan = make(chan NumMap)
+	var map_merge_chan chan *NumMap
+	map_merge_chan = make(chan *NumMap)
 	caller := func() {
 		for result, err := p.Next(); err == nil; result, err = p.Next() {
 			// To control the number of workers we run at once we need to grab a token
@@ -260,7 +226,7 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 				coallate_chan <- prfl
 				arthur.LastNumMap()
 				channel_tokens <- true // Now we're done, add a token to allow another to start
-				map_merge_chan <- arthur
+				map_merge_chan <- &arthur
 				coallate_done <- true
 
 			}
@@ -274,10 +240,7 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 				}
 				fv.const_lk.RUnlock()
 				coallate_chan <- work_n(it, fv)
-				//fmt.Println("cdone send");
 				coallate_done <- true
-				//fmt.Println("cdone sent");
-				//fmt.Println("Adding token");
 				channel_tokens <- true // Now we're done, add a token to allow another to start
 
 			}
@@ -298,7 +261,7 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 	mwg.Add(2)
 	merge_func_worker := func() {
 		for v := range map_merge_chan {
-			found_values.Merge(&v, merge_report)
+			found_values.Merge(v, merge_report)
 			merge_report = true
 		}
 		mwg.Done()
@@ -314,7 +277,6 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 		}
 		//fmt.Println("All workers completed so closing coallate channel")
 		close(coallate_chan)
-		//fmt.Println("Closing  map_merge_chan")
 		close(map_merge_chan)
 		mwg.Done()
 	}
@@ -322,11 +284,9 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 
 	output_merge := func() {
 		for v := range coallate_chan {
-			//v.CheckDuplicates()
-			//fmt.Println("Received a proof")
+			v.RemoveDuplicates()
 			proof_list <- v
 		}
-		//fmt.Println("Closing proof list")
 		close(proof_list)
 		mwg.Done()
 	}
@@ -353,7 +313,7 @@ func expand_n(array_a NumCol) []SolLst {
 	// each work unit within it is then a smaller unit
 	// so an input array of 3 numbers only generates work units that contain number lists of length 2 or less
 
-	len_array_m1 := len(array_a) - 1
+	len_array_m1 := array_a.Len() - 1
 
 	for i := 0; i < (len_array_m1); i++ {
 		var ar_a, ar_b NumCol
@@ -361,74 +321,13 @@ func expand_n(array_a NumCol) []SolLst {
 		// {0},{1,2}, {0,1}{2}
 		ar_a = make(NumCol, i+1)
 		copy(ar_a, array_a[0:i+1])
-		ar_b = make(NumCol, (len(array_a) - (i + 1)))
+		ar_b = make(NumCol, (array_a.Len() - (i + 1)))
 
-		copy(ar_b, array_a[(i+1):(len(array_a))])
+		copy(ar_b, array_a[(i+1):(array_a.Len())])
 		var work_item SolLst // {{2},{3,4}};
 		// a work item always contains 2 elements to the array
 		work_item = append(work_item, &ar_a, &ar_b)
 		work_list = append(work_list, work_item)
 	}
 	return work_list
-}
-
-func check_return_list(proof_list SolLst, found_values *NumMap) {
-	value_check := make(map[int]int)
-	found_values.const_lk.RLock()
-	if found_values.TargetSet && !found_values.SeekShort && found_values.Solved {
-		found_values.const_lk.RUnlock()
-		// When we've aborted early because we found the proof
-		// the proof list is incomplete
-		return
-	}
-	found_values.const_lk.RUnlock()
-	for _, v := range proof_list {
-		// v is *NumLst
-		for _, w := range *v {
-			// w is *Number
-			var Value int
-			Value = w.Val
-			value_check[Value] = 1
-		}
-	}
-
-	tmp := found_values.GetVals()
-	for _, v := range tmp {
-		_, ok := value_check[v]
-		// Every value in found_values should be in the list of values returned
-		if !ok {
-			fmt.Printf("%d in Number map, but is not in the proof list, which has %d Items\n", v, len(proof_list))
-			print_proofs(proof_list)
-			log.Fatal("Done")
-		}
-	}
-}
-func find_proof(proof_list SolLst, to_find int) {
-	found_val := false
-	for _, v := range proof_list {
-		for _, w := range *v {
-			Value := w.Val
-			proof_string := w.ProveIt()
-			if Value == to_find {
-				found_val = true
-				fmt.Printf("Found Value %d, = %s\n", Value, proof_string)
-			}
-		}
-	}
-	if !found_val {
-		fmt.Println("Unable to find value :", to_find)
-	}
-}
-func print_proofs(proof_list SolLst) {
-	for _, v := range proof_list {
-		// v is *NumCol
-		for _, w := range *v {
-			// w is *Number
-			var Value int
-			Value = w.Val
-			proof_string := w.ProveIt()
-			fmt.Printf("Value %3d, = %s\n", Value, proof_string)
-		}
-	}
-	fmt.Println("Done printing proofs")
 }

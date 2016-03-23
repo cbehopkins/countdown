@@ -77,7 +77,7 @@ func TestOne(t *testing.T) {
 			cleanup_packer++
 			if cleanup_packer > 1000 {
 				check_return_list(proof_list, found_values)
-				proof_list.CheckDuplicates()
+				proof_list.RemoveDuplicates()
 				cleanup_packer = 0
 			}
 		}
@@ -87,7 +87,7 @@ func TestOne(t *testing.T) {
 
 	} else {
 		t.Log("Couldn't solve")
-		print_proofs(proof_list)
+		fmt.Println(proof_list)
 		t.Fail()
 	}
 }
@@ -117,7 +117,7 @@ func TestMany(t *testing.T) {
 				proof_list = append(proof_list, v...)
 				cleanup_packer++
 				if cleanup_packer > 1000 {
-					proof_list.CheckDuplicates()
+					proof_list.RemoveDuplicates()
 					cleanup_packer = 0
 				}
 			}
@@ -127,7 +127,7 @@ func TestMany(t *testing.T) {
 
 		} else {
 			t.Log("Couldn't solve")
-			print_proofs(proof_list)
+			t.Log(proof_list)
 			t.Fail()
 		}
 	}
@@ -170,7 +170,7 @@ func TestFail(t *testing.T) {
 				proof_list = append(proof_list, v...)
 				cleanup_packer++
 				if cleanup_packer > 1000 {
-					proof_list.CheckDuplicates()
+					proof_list.RemoveDuplicates()
 					cleanup_packer = 0
 				}
 			}
@@ -178,7 +178,7 @@ func TestFail(t *testing.T) {
 
 		if found_values.Solved {
 			t.Log("We found an impossible proof")
-			print_proofs(proof_list)
+			t.Log(proof_list)
 			t.Fail()
 		} else {
 			t.Log("Failed Correctly")
@@ -217,7 +217,7 @@ func TestIt(t *testing.T) {
 			proof_list = append(proof_list, v...)
 			cleanup_packer++
 			if cleanup_packer > 1000 {
-				proof_list.CheckDuplicates()
+				proof_list.RemoveDuplicates()
 				cleanup_packer = 0
 			}
 		}
@@ -285,7 +285,7 @@ func TestReduction(t *testing.T) {
 
 	var proof_list2 SolLst
 	proof_list2 = append(proof_list2, proof_list0...)
-	proof_list0.CheckDuplicates()
+	proof_list0.RemoveDuplicates()
 	fmt.Printf("Size Before %d; Size after %d\n", len(proof_list2), len(proof_list0))
 	found_values2 := NewNumMap(&proof_list2)
 	found_values2.SelfTest = true

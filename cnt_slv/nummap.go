@@ -152,7 +152,7 @@ func (item *NumMap) add_item(value int, stct *Number, report bool) {
 		if item.TargetSet {
 			if value == item.Target {
 
-				proof_string := stct.ProveIt()
+				proof_string := stct.String()
 				fmt.Printf("Value %d, = %s, Proof Len is %d, Difficulty is %d\n", value, proof_string, stct.ProofLen(), stct.difficulty)
 				if !item.SeekShort {
 					item.const_lk.RUnlock()
@@ -212,43 +212,6 @@ func (item *NumMap) GetVals() []int {
 	return ret_list
 }
 
-func (item *NumMap) CheckDuplicates(proof_list *SolLst) {
-	// Each item in proof_list is a list of numbers
-	// It's possible the same number list could be repeated
-	// Delete these duplicates
-
-	set_list_map := make(map[string]NumCol)
-	var tpp SolLst
-	tpp = *proof_list
-	var del_queue []int
-
-	for i := 0; i < len(tpp); i++ {
-		v := tpp[i]
-		var t0 NumCol
-		t0 = *v
-		string := t0.GetNumCol()
-		//fmt.Printf("Formatted into %s\n", string);
-		_, ok := set_list_map[string]
-		if !ok {
-			set_list_map[string] = t0
-		} else {
-			//fmt.Printf("%s already exists, Length %d\n:", string,len(tpp));
-			//pretty.Println(t1)
-			//fmt.Printf("It is now, %d", i);
-			//pretty.Println(t0);
-			del_queue = append(del_queue, i)
-		}
-	}
-
-	for i := len(del_queue); i > 0; i-- {
-		//fmt.Printf("DQ#%d, Len=%d\n",i, len(del_queue))
-		v := del_queue[i-1]
-		//fmt.Println("You've asked to delete",v);
-		l1 := *proof_list
-		*proof_list = append(l1[:v], l1[v+1:]...)
-	}
-
-}
 func (item *NumMap) LastNumMap() {
 	//fmt.Println("Closing input_channel")
 	close(item.input_channel_array)
@@ -277,15 +240,11 @@ func (item *NumMap) PrintProofs() {
 		if Value < min_num {
 			min_num = Value
 		}
-
-		//      proof_string := v.ProveIt()
-		//      fmt.Printf("Value %d, = %s\n",Value, proof_string);
-		//pretty.Println(w);
 	}
 	for i := min_num; i <= max_num; i++ {
 		Value, ok := item.nmp[i]
 		if ok {
-			proof_string := Value.ProveIt()
+			proof_string := Value.String()
 			fmt.Printf("Value %d, = %s, difficulty = %d\n", Value.Val, proof_string, Value.difficulty)
 		}
 	}
