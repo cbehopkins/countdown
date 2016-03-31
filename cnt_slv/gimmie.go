@@ -33,7 +33,7 @@ func (g *Gimmie) Reset() {
 func (g *Gimmie) Next() (result *Number, err error) {
 	for ; g.outer < g.sol_list.Len(); g.outer++ {
 		in_lst_p := g.sol_list[g.outer]
-		in_lst := *in_lst_p // It's okay these should be stack variables as they do not leave the scope
+		in_lst := in_lst_p // It's okay these should be stack variables as they do not leave the scope
 		for g.inner < in_lst.Len() {
 			result = in_lst[g.inner]
 			g.inner++

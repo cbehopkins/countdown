@@ -17,7 +17,7 @@ func check_return_list(proof_list SolLst, found_values *NumMap) {
 	found_values.const_lk.RUnlock()
 	for _, v := range proof_list {
 		// v is *NumLst
-		for _, w := range *v {
+		for _, w := range v {
 			// w is *Number
 			var Value int
 			Value = w.Val
@@ -39,7 +39,7 @@ func check_return_list(proof_list SolLst, found_values *NumMap) {
 func (proof_list SolLst) find_proof(to_find int) {
 	found_val := false
 	for _, v := range proof_list {
-		for _, w := range *v {
+		for _, w := range v {
 			Value := w.Val
 			proof_string := w.String()
 			if Value == to_find {

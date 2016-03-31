@@ -67,7 +67,7 @@ func main() {
 		found_values.SetTarget(target)
 	}
 
-	proof_list = append(proof_list, &bob) // Add on the work item that is the source
+	proof_list = append(proof_list, bob) // Add on the work item that is the source
 
 	go cnt_slv.PermuteN(bob, found_values, return_proofs)
 	cleanup_packer := 0
@@ -77,7 +77,7 @@ func main() {
 			proof_list = append(proof_list, v...)
 			cleanup_packer++
 			if cleanup_packer > 1000 {
-				proof_list.CheckDuplicates()
+				proof_list.RemoveDuplicates()
 				cleanup_packer = 0
 			}
 		}

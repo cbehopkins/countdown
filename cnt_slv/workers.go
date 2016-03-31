@@ -21,12 +21,12 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 	found_values.const_lk.RUnlock()
 	if len_array_in == 1 {
 		//ret_list = append(ret_list, &array_in)
-		return SolLst{&array_in}
+		return SolLst{array_in}
 	} else if len_array_in == 2 {
 		var tmp_list NumCol
 		tmp_list = found_values.make_2_to_1(array_in[0:2])
 		found_values.AddMany(tmp_list...)
-		ret_list = append(ret_list, &tmp_list, &array_in)
+		ret_list = append(ret_list, tmp_list, array_in)
 		return ret_list
 	}
 
@@ -45,7 +45,7 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 	work_list = expand_n(array_in)
 	// so by this stage we have something like {{{2},{3,4}}} or for a 4 variable: { {{2}, {3,4,5}}, {{2,3},{4,5}} }
 	var work_unit SolLst
-	var top_ret_to_make int
+	var top_src_to_make int
 	var top_numbers_to_make int
 	for _, work_unit = range work_list {
 		// Now we've extracted one work item,
@@ -59,14 +59,14 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 				log.Fatalf("Invalid work unit length, %d", work_unit_length)
 			}
 		}
-		var unit_a, unit_b *NumCol
+		var unit_a, unit_b NumCol
 		unit_a = work_unit[0]
 		unit_b = work_unit[1]
 
 		var list_a SolLst
 		var list_b SolLst
-		list_a = work_n(*unit_a, found_values) // return a list of everything that can be done with this set
-		list_b = work_n(*unit_b, found_values)
+		list_a = work_n(unit_a, found_values) // return a list of everything that can be done with this set
+		list_b = work_n(unit_b, found_values)
 
 		// Now we want two list of numbers to cross against each other
 		gimmie_a := NewGimmie(list_a)
@@ -75,7 +75,7 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 		current_item := 0
 		cross_len := gimmie_a.Items() * gimmie_b.Items()
 		num_items_to_make := cross_len * 2
-		top_ret_to_make += num_items_to_make
+		top_src_to_make += num_items_to_make
 
 		num_numbers_to_make := 0
 		// So scan through and work out how many items we are going to need
@@ -94,16 +94,22 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 	//current_item = 0
 	// Malloc the memory once!
 	current_number_loc := 0
+	// This is the list of numbers that calculations are done from
+	src_list := found_values.aquire_numbers(top_src_to_make)
+	// This is the list of numbers that will be used in the proof
+	// i.e. the list that calculations results end up in
 	num_list := found_values.aquire_numbers(top_numbers_to_make)
-	ret_list = make(SolLst, 0, (top_ret_to_make + work_unit.Len() + ret_list.Len()))
+	// And this allocates the list that will point to those (previously allocated) numbers
+	// uses top_src_to_make/2 as for each 2 items there is one solution
+	ret_list = make(SolLst, 0, ((top_src_to_make / 2) + work_unit.Len() + ret_list.Len()))
 	// Add on the work unit because that contains sub combinations that may be of use
 	ret_list = append(ret_list, work_unit...)
-	//current_item := 0
+	current_src := 0
 	for _, work_unit = range work_list {
 		unit_a := work_unit[0]
 		unit_b := work_unit[1]
-		list_a := work_n(*unit_a, found_values)
-		list_b := work_n(*unit_b, found_values)
+		list_a := work_n(unit_a, found_values)
+		list_b := work_n(unit_b, found_values)
 		gimmie_a := NewGimmie(list_a)
 		gimmie_b := NewGimmie(list_b)
 
@@ -119,24 +125,32 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 				}
 				found_values.const_lk.RUnlock()
 				// We have to re-caclulate
-				list := []*Number{a_num, b_num}
+
+				src_list[current_src] = a_num
+				src_list[current_src+1] = b_num
+				// Shorthand to make code more readable
+				bob_list := src_list[current_src : current_src+2]
+
 				num_to_make,
 					add_set, mul_set, sub_set, div_set,
-					a_gt_b := found_values.do_maths(list)
+					a_gt_b := found_values.do_maths(bob_list)
+
+				// Shorthand
+				tmp_list := num_list[current_number_loc:(current_number_loc + num_to_make)]
 
 				// Populate the part of the return list for this run
 				// This is the arra AddItems will write into
-				tmp_list := num_list[current_number_loc:(current_number_loc + num_to_make)]
-				found_values.AddItems(list, num_list, current_number_loc,
+				found_values.AddItems(bob_list, num_list, current_number_loc,
 					add_set, mul_set, sub_set, div_set,
 					a_gt_b)
 				current_number_loc += num_to_make
+				current_src += 2
 				if found_values.SelfTest {
 					for _, v := range tmp_list {
 						v.ProveSol()
 					}
 				}
-				ret_list = append(ret_list, &tmp_list)
+				ret_list = append(ret_list, tmp_list)
 			}
 		}
 
@@ -326,7 +340,7 @@ func expand_n(array_a NumCol) []SolLst {
 		copy(ar_b, array_a[(i+1):(array_a.Len())])
 		var work_item SolLst // {{2},{3,4}};
 		// a work item always contains 2 elements to the array
-		work_item = append(work_item, &ar_a, &ar_b)
+		work_item = append(work_item, ar_a, ar_b)
 		work_list = append(work_list, work_item)
 	}
 	return work_list

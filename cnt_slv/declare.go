@@ -10,7 +10,7 @@ import (
 // at the same time
 // A solution List is a number of things you do with a set of numbers
 type NumCol []*Number
-type SolLst []*NumCol
+type SolLst []NumCol
 
 // This function is used to add the initial numbers
 func (bob *NumCol) AddNum(input_num int, found_values *NumMap) {
@@ -30,7 +30,7 @@ func (item *SolLst) RemoveDuplicates() {
 		var v NumCol
 		var t SolLst
 		t = *item
-		v = *t[i]
+		v = t[i]
 		str := v.String()
 
 		_, ok := sol_map[str]
@@ -90,7 +90,7 @@ func (proof_list SolLst) String() string {
 	var ret_val string
 	for _, v := range proof_list {
 		// v is *NumCol
-		for _, w := range *v {
+		for _, w := range v {
 			// w is *Number
 			var Value int
 			Value = w.Val

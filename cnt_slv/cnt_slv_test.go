@@ -65,7 +65,7 @@ func TestOne(t *testing.T) {
 
 	found_values.SetTarget(target)
 
-	proof_list = append(proof_list, &bob) // Add on the work item that is the source
+	proof_list = append(proof_list, bob) // Add on the work item that is the source
 
 	fmt.Println("Starting permute")
 	go PermuteN(bob, found_values, return_proofs)
@@ -105,7 +105,7 @@ func TestMany(t *testing.T) {
 			bob.AddNum(itm, found_values)
 		}
 		found_values.SetTarget(item.Target)
-		proof_list = append(proof_list, &bob) // Add on the work item that is the source
+		proof_list = append(proof_list, bob) // Add on the work item that is the source
 
 		fmt.Println("Starting permute")
 		go PermuteN(bob, found_values, return_proofs)
@@ -158,7 +158,7 @@ func TestFail(t *testing.T) {
 			bob.AddNum(itm, found_values)
 		}
 		found_values.SetTarget(item.Target)
-		proof_list = append(proof_list, &bob) // Add on the work item that is the source
+		proof_list = append(proof_list, bob) // Add on the work item that is the source
 
 		fmt.Println("Starting permute")
 		go PermuteN(bob, found_values, return_proofs)
@@ -207,7 +207,7 @@ func TestIt(t *testing.T) {
 
 	//found_values.SetTarget(target)
 
-	proof_list = append(proof_list, &bob) // Add on the work item that is the source
+	proof_list = append(proof_list, bob) // Add on the work item that is the source
 
 	fmt.Println("Starting permute")
 	go PermuteN(bob, found_values, return_proofs)
@@ -252,8 +252,8 @@ func TestReduction(t *testing.T) {
 
 	return_proofs0 := make(chan SolLst, 16)
 	return_proofs1 := make(chan SolLst, 16)
-	proof_list0 = append(proof_list0, &bob0) // Add on the work item that is the source
-	proof_list1 = append(proof_list1, &bob1) // Add on the work item that is the source
+	proof_list0 = append(proof_list0, bob0) // Add on the work item that is the source
+	proof_list1 = append(proof_list1, bob1) // Add on the work item that is the source
 
 	fmt.Println("Starting permute")
 	go PermuteN(bob0, found_values0, return_proofs0)

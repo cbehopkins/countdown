@@ -124,7 +124,7 @@ func (item *NumMap) AddMany(b ...*Number) {
 func (item *NumMap) AddSol(a SolLst) {
 	item.map_lock.Lock()
 	for _, b := range a {
-		for _, c := range *b {
+		for _, c := range b {
 			//fmt.Println("Ading Value:", c.Val)
 			item.add_item(c.Val, c, false)
 		}
