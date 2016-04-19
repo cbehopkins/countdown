@@ -35,9 +35,9 @@ func (found_values *NumMap) do_maths(list []*Number) (num_to_make int,
 	}
 
 	if a_gt_b {
-		sub_res := a - b
+		sub_res_amb := a - b
 		amb0 := ((a % b) == 0)
-		if (sub_res != a) && (sub_res != 0) {
+		if (sub_res_amb != a) && (sub_res_amb != 0) {
 			sub_set = true
 			num_to_make++
 		}
@@ -46,9 +46,9 @@ func (found_values *NumMap) do_maths(list []*Number) (num_to_make int,
 			num_to_make++
 		}
 	} else {
-		sub_res := b - a
+		sub_res_bma := b - a
 		bma0 := ((b % a) == 0)
-		if (b-a != b) && (sub_res != 0) {
+		if (sub_res_bma != b) && (sub_res_bma != 0) {
 			sub_set = true
 			num_to_make++
 		}
