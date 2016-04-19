@@ -6,6 +6,9 @@ import (
 	"runtime"
 	"sync"
 	"testing"
+	"os"
+	"runtime/pprof"
+	"log"
 )
 
 //func TestSelf(t *testing.T) {
@@ -90,8 +93,11 @@ func TestOne(t *testing.T) {
 		fmt.Println(proof_list)
 		t.Fail()
 	}
+	found_values = &NumMap{}
+	bob = NumCol{}
 }
 func TestMany(t *testing.T) {
+
 
 	test_set := init_many()
 	for _, item := range test_set {
@@ -130,6 +136,14 @@ func TestMany(t *testing.T) {
 			t.Log(proof_list)
 			t.Fail()
 		}
+	}
+	if false {
+	f, err := os.Create("memprofile.prof")
+        if err != nil {
+            log.Fatal(err)
+        }
+        pprof.WriteHeapProfile(f)
+        f.Close()
 	}
 }
 func init_fail_many() []testset {
@@ -258,15 +272,13 @@ func TestReduction(t *testing.T) {
 	fmt.Println("Starting permute")
 	go PermuteN(bob0, found_values0, return_proofs0)
 	mwg := new(sync.WaitGroup)
-	mwg.Add(1)
+	mwg.Add(2)
 	go func() {
 		for v := range return_proofs0 {
 			proof_list0 = append(proof_list0, v...)
 		}
 		mwg.Done()
 	}()
-	mwg.Wait()
-	mwg.Add(1)
 	go PermuteN(bob1, found_values1, return_proofs1)
 	go func() {
 		for v := range return_proofs1 {

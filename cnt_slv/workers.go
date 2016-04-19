@@ -78,7 +78,6 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 		top_src_to_make += num_items_to_make
 
 		num_numbers_to_make := 0
-		// So scan through and work out how many items we are going to need
 		for a_num, err_a := gimmie_a.Next(); err_a == nil; a_num, err_a = gimmie_a.Next() {
 			for b_num, err_b := gimmie_b.Next(); err_b == nil; b_num, err_b = gimmie_b.Next() {
 				tmp,
@@ -201,7 +200,7 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 	}
 	var channel_tokens chan bool
 	channel_tokens = make(chan bool, 512)
-	for i := 0; i < 4; i++ {
+	for i := 0; i < 16; i++ {
 		//fmt.Println("Adding token");
 		channel_tokens <- true
 	}
