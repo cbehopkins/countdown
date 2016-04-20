@@ -83,4 +83,13 @@ func main() {
 		}
 	}
 	// TBD on seeks option add in tidy printing of the final solution
+	found_values.PrintProofs()
+	xml_string := found_values.MarshalXml()
+
+	var prl cnt_slv.SolLst
+        fv := cnt_slv.NewNumMap(&prl)
+	fv.UnMarshalXml(xml_string)
+
+
+
 }

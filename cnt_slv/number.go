@@ -9,9 +9,9 @@ import (
 
 type Number struct {
 	// A number consists of
-	Val        int       // a value
+	Val        int       `xml:"val"` // a value
 	list       []*Number // a pointer the the list of numbers used to obtain this
-	operation  string    // The operation used on those numbers to get here
+	operation  string    `xml:"op"`	 // The operation used on those numbers to get here
 	difficulty int
 }
 
