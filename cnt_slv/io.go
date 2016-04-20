@@ -51,7 +51,7 @@ func (item *NumMap) AddXmlNum (input XmlNum) (new_number Number) {
 
 	return new_number
 }
-func (item *NumMap) MarshalXml () (result string) {
+func (item *NumMap) MarshalXml () (output []byte, err error) {
 	thing_list := NewXmlStruct(len(item.nmp))
 
         for _, v := range item.nmp {
@@ -59,21 +59,20 @@ func (item *NumMap) MarshalXml () (result string) {
 		thing_list.Add(tmp)
 	}
 
-	output, err := xml.MarshalIndent(thing_list, "", "    ")
-  	if err != nil {
-		fmt.Printf("error: %v\n", err)
-  	}
+	output, err = xml.MarshalIndent(thing_list, "", "    ")
+  	//if err != nil {
+	//	fmt.Printf("error: %v\n", err)
+  	//}
 
-  	s := string(output)
+  	//s := string(output)
   	//fmt.Println(s)
-	return s
+	return 
 }
-
-func (item *NumMap) UnMarshalXml (input string) {
+func (item *NumMap) UnMarshalXml (input []byte ) (err error) {
 	v := NewXmlStruct(0)
-	err := xml.Unmarshal([]byte(input), v)
+	err = xml.Unmarshal(input, v)
 	if err != nil {
-		fmt.Printf("error: %v", err)
+		//fmt.Printf("error: %v", err)
 		return
 	}
 	fmt.Printf("We've been given:\n%s\nand we turn this into:\n", input)
@@ -89,4 +88,5 @@ func (item *NumMap) UnMarshalXml (input string) {
 		j.SetDifficulty()
 	}
 	item.PrintProofs()
+	return
 }
