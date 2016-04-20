@@ -4,7 +4,7 @@ import (
 		"encoding/xml"
      		"fmt"
 //    		"os"
-//	"github.com/tonnerre/golang-pretty"
+	"github.com/tonnerre/golang-pretty"
 )
 type XmlStruct struct {
         XMLName   xml.Name `xml:"s"`
@@ -22,7 +22,8 @@ type XmlNum struct {
 	// The aim here is to keep the produced XML as small as possible
 //	XMLName   	xml.Name `xml:"n"` 
 	Val   		int	 `xml:"v,attr"`
-	Proof 		string	 `xml:"p,attr"`
+	Op		string `xml:"o,attr"`
+	List		XmlStruct
 }
 
 func (i *Number) MarshalXml () string {
@@ -37,13 +38,20 @@ func (i *Number) MarshalXml () string {
   //fmt.Println(s)
   return s
 }
-
-
+func (it *XmlStruct) AddNum (input Number) (result XmlNum) {
+	result.Val = input.Val
+	result.Op = input.operation
+	result.List = NewXmlStruct(len(input.list))
+	for _, v := range input.list {
+		result.List.Add(AddNum(v))
+	}
+	return result
+}
 func (item *NumMap) MarshalXml () (result string) {
 	thing_list := NewXmlStruct(len(item.nmp))
 
         for _, v := range item.nmp {
-		tmp := XmlNum{Val:v.Val, Proof:v.String()}
+		tmp := AddNum(v)
 		thing_list.Add(tmp)
 	}
 
@@ -64,8 +72,8 @@ func (item *NumMap) UnMarshalXml (input string) {
 		fmt.Printf("error: %v", err)
 		return
 	}
-	//fmt.Printf("We've been given:\n%s\nand we turn this into:\n", input)
-	//pretty.Println(v)
+	fmt.Printf("We've been given:\n%s\nand we turn this into:\n", input)
+	pretty.Println(v)
 	for _,j := range v.List {
 		fmt.Printf("Value of %d, Proof of %s\n", j.Val, j.Proof)
 	}
