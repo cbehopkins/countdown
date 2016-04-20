@@ -62,6 +62,20 @@ func (nmp *NumMap) Keys() []int {
 	}
 	return ret_list
 }
+func (nmp *NumMap) Numbers() []*Number {
+        ret_list := make([]*Number, len(nmp.nmp))
+        i := 0
+        for _, val := range nmp.nmp {
+                ret_list[i] = val
+                i++
+        }
+        return ret_list
+}
+
+
+
+
+
 func (ref *NumMap) Compare(can *NumMap) bool {
 	pass := true
 	// Compare two number maps return true if they contain the same numbers

@@ -237,6 +237,24 @@ func (i *Number) ProveSol() int {
 		return running_total
 	}
 }
+func (i *Number) SetDifficulty () int {
+	if (i.list == nil) || (len(i.list) == 0) {
+		i.difficulty = 0
+		return 0
+	}
+	switch i.operation {
+		case "+" : i.difficulty = 1
+		case "-","--": i.difficulty = 1
+		case "*": i.difficulty = 2
+		case "/","\\":i.difficulty = 3
+		default:
+                	log.Fatal("Unknown operation type")
+	}
+	for _,v := range i.list {
+		i.difficulty += v.SetDifficulty()
+	}
+	return i.difficulty
+}
 
 func (i *Number) String() string {
 	var proof string
