@@ -2,12 +2,12 @@ package cnt_slv
 
 import (     
 		"encoding/xml"
-     		"fmt"
+//     		"fmt"
 //    		"os"
 //	"github.com/tonnerre/golang-pretty"
 )
 type XmlStruct struct {
-        XMLName   xml.Name `xml:"s,omitempt"`
+        XMLName   xml.Name `xml:"s,omitempty"`
   	List [] XmlNum `xml:"l,omitempty"`
 }
 func NewXmlStruct (items int) (itm *XmlStruct) {
@@ -59,7 +59,8 @@ func (item *NumMap) MarshalXml () (output []byte, err error) {
 		thing_list.Add(tmp)
 	}
 
-	output, err = xml.MarshalIndent(thing_list, "", "    ")
+	//output, err = xml.MarshalIndent(thing_list, "", "    ")
+        output, err = xml.Marshal(thing_list)
   	//if err != nil {
 	//	fmt.Printf("error: %v\n", err)
   	//}
@@ -75,7 +76,7 @@ func (item *NumMap) UnMarshalXml (input []byte ) (err error) {
 		//fmt.Printf("error: %v", err)
 		return
 	}
-	fmt.Printf("We've been given:\n%s\nand we turn this into:\n", input)
+	//fmt.Printf("We've been given:\n%s\nand we turn this into:\n", input)
 	//pretty.Println(v)
 	for _,j := range v.List {
 		//fmt.Printf("Value of %d\n", j.Val)
@@ -87,6 +88,5 @@ func (item *NumMap) UnMarshalXml (input []byte ) (err error) {
 		j.ProveSol()
 		j.SetDifficulty()
 	}
-	item.PrintProofs()
 	return
 }

@@ -10,6 +10,11 @@ import (
 	"github.com/tonnerre/golang-pretty"
 )
 
+
+func WorkN(array_in NumCol, found_values *NumMap) SolLst {
+  return work_n(array_in, found_values)
+}
+
 func work_n(array_in NumCol, found_values *NumMap) SolLst {
 	var ret_list SolLst
 	len_array_in := array_in.Len()
@@ -219,7 +224,7 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 			if !ok {
 				log.Fatalf("Error Type conversion problem")
 			}
-			worker_par := func(it NumCol, fv *NumMap, curr_iten int) {
+			worker_par := func(it NumCol, fv *NumMap) {
 				// This is the parallel worker function
 				// It creates a new number map, populates it by working the incoming number set
 				// then merges the number map back into the main numbermap
@@ -243,9 +248,9 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 				coallate_done <- true
 
 			}
-			worker_lone := func(it NumCol, fv *NumMap, curr_iten int) {
+			worker_lone := func(it NumCol, fv *NumMap) {
 				fv.const_lk.RLock()
-				if found_values.Solved {
+				if fv.Solved {
 					fv.const_lk.RUnlock()
 					coallate_done <- true
 					channel_tokens <- true
@@ -258,10 +263,10 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 
 			}
 			if !lone_map {
-				go worker_par(bob, found_values, p.Index()-1)
+				go worker_par(bob, found_values)
 			}
 			if lone_map {
-				go worker_lone(bob, found_values, p.Index()-1)
+				go worker_lone(bob, found_values)
 			}
 
 		}

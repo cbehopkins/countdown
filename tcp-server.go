@@ -5,7 +5,10 @@ import (
 "fmt"
 "io"
 "bufio"
-"strings"
+//"strings"
+"encoding/xml"
+"github.com/tonnerre/golang-pretty"
+"github.com/cbehopkins/countdown/cnt_slv"
 )
 
 func main() {
@@ -28,7 +31,28 @@ func main() {
     }
   }
 }
-
+type UmNetStruct struct {
+        XMLName   xml.Name `xml:"work"`
+	Val []int  `xml:"int"`
+}
+func UnmarshallNet (input []byte) (result []int) {
+ 	bob := &UmNetStruct{}
+ 	//var bob []int `xml:"int"`
+	bob.Val  = make([]int, 0,6)
+	result = make([]int, 0,6)
+	err := xml.Unmarshal(input, &bob)
+        if err != nil {                                                                                                                                                                                                              
+                fmt.Printf("error: %v", err)
+                return                                                                                                                                                                                                               
+        }
+        fmt.Printf("We've been given:\n%s\nand we turn this into:\n", input)                                                                                                                                                         
+        pretty.Println(bob)
+        for _,j := range bob.Val {
+                //fmt.Printf("Value of %d\n", j)
+		result = append(result,j)
+        }
+	return result
+}
 func HandleConnection (conn net.Conn) {
 
   // run loop forever (or until ctrl-c)
@@ -45,8 +69,29 @@ func HandleConnection (conn net.Conn) {
     }
     // output message received
     fmt.Print("Message Received:", string(message))
+    int_array := UnmarshallNet([]byte(message))
+    var bob cnt_slv.NumCol
+    var proof_list cnt_slv.SolLst                                                                                                                                                                                                
+    found_values := cnt_slv.NewNumMap(&proof_list) //pass it the proof list so it can auto-check for validity at the end                                                                                                         
+    for _,j := range int_array {
+      fmt.Printf("Adding Value of %d\n", j)
+      bob.AddNum(j, found_values)
+    }
+    cnt_slv.WorkN(bob, found_values)
+    found_values.LastNumMap()
+    found_values.PrintProofs()
+    byte_array, err := found_values.MarshalXml()
+    if (err!=nil){
+      fmt.Printf("Marshalling Error")
+    } else {
+	fmt.Println(string(byte_array))
+    }
+    newmessage := string(byte_array)
+
+
+
     // sample process for string received
-    newmessage := strings.ToUpper(message)
+    //newmessage := strings.ToUpper(message)
     // send new string back to client
     _,err = conn.Write([]byte(newmessage + "\n"))
     if (err != nil) {
