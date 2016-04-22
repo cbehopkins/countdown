@@ -11,7 +11,7 @@ type Number struct {
 	// A number consists of
 	Val        int       `json:"val"` // a value
 	list       []*Number // a pointer the the list of numbers used to obtain this
-	operation  string    `json:"op"`	 // The operation used on those numbers to get here
+	operation  string     // The operation used on those numbers to get here
 	difficulty int
 }
 
