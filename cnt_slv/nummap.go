@@ -31,6 +31,7 @@ type NumMap struct {
 	SeekShort bool
 	UseMult   bool
 	SelfTest  bool
+	PermuteMode int
 }
 
 func NewNumMap(proof_list *SolLst) *NumMap {
@@ -174,7 +175,7 @@ func (item *NumMap) add_item(value int, stct *Number, report bool) {
 
 				proof_string := stct.String()
 				fmt.Printf("Value %d, = %s, Proof Len is %d, Difficulty is %d\n", value, proof_string, stct.ProofLen(), stct.difficulty)
-				//stct.MarshalXml()
+				//stct.MarshalJson()
 				if !item.SeekShort {
 					item.const_lk.RUnlock()
 					item.const_lk.Lock()
@@ -270,5 +271,5 @@ func (item *NumMap) PrintProofs() {
 		}
 	}
 	fmt.Printf("There are:\n%d Numbers\nMin:%4d Max:%4d\n", num_num, min_num, max_num)
-	item.MarshalXml()
+	item.MarshalJson()
 }

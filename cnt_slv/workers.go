@@ -4,7 +4,7 @@ import (
 "net"
 "bufio"
 "os"
-"encoding/xml"
+"encoding/json"
 	"fmt"
 	"log"
 	"runtime"
@@ -15,14 +15,13 @@ import (
 )
 
 const (
-	ParMap = iota
-	LonMap
+	LonMap = iota
+	ParMap
 	NetMap
 )
 type UmNetStruct struct {
-        XMLName   xml.Name `xml:"work"`
-        UseMult bool `xml:"mul"`
-        Val []int  `xml:"int"`
+        UseMult bool `json:"mul"`
+        Val []int  `json:"int"`
 }
 
 func WorkN(array_in NumCol, found_values *NumMap) SolLst {
@@ -191,7 +190,7 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 	// No system I have access to have enough CPUs for this to be an issue
 	// However the framework seems to be there
 	// TBD make this a comannd line variable
-	permute_mode := NetMap
+	permute_mode := found_values.PermuteMode
 	required_tokens := 16
 
 	//fmt.Println("Start Permute")
@@ -352,9 +351,9 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 				}
 			    	//////////
    				// Take our array of numbers (val_array)
-   			 	// and turnt hem into an xml request ready to send to the network
+   			 	// and turnt hem into an json request ready to send to the network
    			 	bob := UmNetStruct{Val:val_array,  UseMult:use_mult}
-   			 	text,err := xml.Marshal(bob)
+   			 	text,err := json.Marshal(bob)
 
    			 	//////////
    			 	// Now send to an open connection
@@ -371,7 +370,7 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 
    			 	//////////
    			 	// Take the message text we've got back and interpret it
-				fv.MergeXml(message)
+				fv.MergeJson(message)
 				// Not applicable for Net Mode
 				//coallate_chan <- work_n(it, fv)
 

@@ -5,12 +5,11 @@ import  (
 "fmt"
 "bufio"
 "os"
-"encoding/xml"
+"encoding/json"
 "github.com/cbehopkins/countdown/cnt_slv"
 )
 type UmNetStruct struct {
-	XMLName   xml.Name `xml:"work"`
-        Val []int  `xml:"int"`                                                                                                                                                                                                       
+        Val []int  `json:"int"`                                                                                                                                                                                                       
 }
 
 func main() {
@@ -52,9 +51,9 @@ func main() {
     }
     //////////
     // Take our array of numbers (val_array)
-    // and turnt hem into an xml request ready to send to the network
+    // and turnt hem into an json request ready to send to the network
     bob := UmNetStruct{Val:val_array}
-    text,err := xml.Marshal(bob)
+    text,err := json.Marshal(bob)
     
     //////////
     // Now send to an open connection
@@ -69,6 +68,6 @@ func main() {
 
     //////////
     // Take the message text we've got back and interpret it
-    cnt_slv.ImportXml(message)	// Import prints the proofs for us - useful for test but not much else
+    cnt_slv.ImportJson(message)	// Import prints the proofs for us - useful for test but not much else
   }
 }

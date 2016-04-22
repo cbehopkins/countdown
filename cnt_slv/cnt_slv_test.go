@@ -57,6 +57,7 @@ func TestOne(t *testing.T) {
 
 	found_values.SelfTest = true
 	found_values.UseMult = true
+	found_values.PermuteMode = NetMap
 	bob.AddNum(8, found_values)
 	bob.AddNum(9, found_values)
 	bob.AddNum(10, found_values)
@@ -109,6 +110,7 @@ func TestMany(t *testing.T) {
 		found_values := NewNumMap(&proof_list) //pass it the proof list so it can auto-check for validity at the end
 		found_values.SelfTest = true
 		found_values.UseMult = true
+		found_values.PermuteMode = rand.Intn(3)	// Select a random mode
 		return_proofs := make(chan SolLst, 16)
 		for _, itm := range item.Selected {
 			bob.AddNum(itm, found_values)

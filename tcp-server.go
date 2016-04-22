@@ -6,7 +6,7 @@ import (
 "io"
 "bufio"
 //"strings"
-"encoding/xml"
+"encoding/json"
 //"github.com/tonnerre/golang-pretty"
 "github.com/cbehopkins/countdown/cnt_slv"
 )
@@ -32,16 +32,15 @@ func main() {
   }
 }
 type UmNetStruct struct {
-        XMLName   xml.Name `xml:"work"`
-	UseMult	bool `xml:"mul"`
-	Val []int  `xml:"int"`
+	UseMult	bool `json:"mul"`
+	Val []int  `json:"int"`
 }
 func UnmarshallNet (input []byte) (result []int, use_mult bool){
  	bob := &UmNetStruct{}
- 	//var bob []int `xml:"int"`
+ 	//var bob []int `json:"int"`
 	bob.Val  = make([]int, 0,6)
 	result = make([]int, 0,6)
-	err := xml.Unmarshal(input, &bob)
+	err := json.Unmarshal(input, &bob)
         if err != nil {
                 fmt.Printf("error: %v", err)
                 return
@@ -83,7 +82,7 @@ func HandleConnection (conn net.Conn) {
     cnt_slv.WorkN(bob, found_values)
     found_values.LastNumMap()
     //found_values.PrintProofs()
-    byte_array, err := found_values.MarshalXml()
+    byte_array, err := found_values.MarshalJson()
     if (err!=nil){
       fmt.Printf("Marshalling Error")
     } else {
