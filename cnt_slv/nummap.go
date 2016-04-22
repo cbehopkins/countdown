@@ -63,18 +63,14 @@ func (nmp *NumMap) Keys() []int {
 	return ret_list
 }
 func (nmp *NumMap) Numbers() []*Number {
-        ret_list := make([]*Number, len(nmp.nmp))
-        i := 0
-        for _, val := range nmp.nmp {
-                ret_list[i] = val
-                i++
-        }
-        return ret_list
+	ret_list := make([]*Number, len(nmp.nmp))
+	i := 0
+	for _, val := range nmp.nmp {
+		ret_list[i] = val
+		i++
+	}
+	return ret_list
 }
-
-
-
-
 
 func (ref *NumMap) Compare(can *NumMap) bool {
 	pass := true
@@ -135,7 +131,7 @@ func (item *NumMap) AddMany(b ...*Number) {
 	item.input_channel_array <- arr
 }
 
-func (item *NumMap) AddSol(a SolLst) {
+func (item *NumMap) AddSol(a SolLst, report bool) {
 	item.map_lock.Lock()
 	for _, b := range a {
 		for _, c := range b {
@@ -146,18 +142,28 @@ func (item *NumMap) AddSol(a SolLst) {
 	item.map_lock.Unlock()
 }
 func (item *NumMap) Merge(a *NumMap, report bool) {
-	for i, v := range a.nmp {
-
-		var atomic NumMapAtom
-		atomic.a = i
-		atomic.b = v
-		atomic.report = report
-		item.input_channel <- atomic
+	a.map_lock.Lock()
+	tmp_col := make(NumCol, len(a.nmp)) 
+	i:=0
+	for _, v := range a.nmp {
+		tmp_col[i] = v
+		i++
 	}
+	a.map_lock.Unlock()
+	tmp_sol := SolLst{tmp_col}
+	item.AddSol(tmp_sol, report)
+	//	var atomic NumMapAtom
+	//	atomic.a = i
+	//	atomic.b = v
+	//	atomic.report = report
+	//	item.input_channel <- atomic
+	//}
 }
 
 func (item *NumMap) add_item(value int, stct *Number, report bool) {
 	// The lock on the map structure must be grabbed outside
+	//item.map_lock.Lock()
+	//defer item.map_lock.Unlock()
 	retr, ok := item.nmp[value]
 	item.const_lk.RLock()
 	//defer item.const_lk.RUnlock()
@@ -168,7 +174,7 @@ func (item *NumMap) add_item(value int, stct *Number, report bool) {
 
 				proof_string := stct.String()
 				fmt.Printf("Value %d, = %s, Proof Len is %d, Difficulty is %d\n", value, proof_string, stct.ProofLen(), stct.difficulty)
-                                //stct.MarshalXml()
+				//stct.MarshalXml()
 				if !item.SeekShort {
 					item.const_lk.RUnlock()
 					item.const_lk.Lock()

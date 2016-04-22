@@ -64,17 +64,6 @@ func main() {
         fmt.Printf("Read String error: %v\n", err)
     }
     //fmt.Print("Message from server: "+message)
-
-    var prl cnt_slv.SolLst
-    fv := cnt_slv.NewNumMap(&prl)
-    err = fv.UnMarshalXml([]byte(message))
-    if err != nil {
-          fmt.Printf("error: %v\n", err)
-          return
-    }
-    fv.PrintProofs()
-
-
-
+    cnt_slv.ImportXml(message)
   }
 }

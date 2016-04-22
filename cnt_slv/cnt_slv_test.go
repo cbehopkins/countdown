@@ -74,6 +74,7 @@ func TestOne(t *testing.T) {
 	go PermuteN(bob, found_values, return_proofs)
 	cleanup_packer := 0
 	for v := range return_proofs {
+		//fmt.Println("Proof Received")
 		if found_values.SelfTest {
 			// This unused code is handy if we want a proof list
 			proof_list = append(proof_list, v...)
@@ -90,9 +91,11 @@ func TestOne(t *testing.T) {
 
 	} else {
 		t.Log("Couldn't solve")
-		fmt.Println(proof_list)
+		//fmt.Println(proof_list)
+		found_values.PrintProofs()
 		t.Fail()
 	}
+	proof_list = SolLst{} 
 	found_values = &NumMap{}
 	bob = NumCol{}
 }
@@ -303,7 +306,7 @@ func TestReduction(t *testing.T) {
 	found_values2.SelfTest = true
 	found_values2.UseMult = true
 
-	found_values2.AddSol(proof_list0)
+	found_values2.AddSol(proof_list0, false)
 	found_values2.LastNumMap()
 	if found_values2.Compare(found_values0) {
 	} else {

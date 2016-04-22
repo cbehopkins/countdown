@@ -10,9 +10,13 @@ import (
 	"github.com/tonnerre/golang-pretty"
 )
 
+const (
+	ParMap = iota
+	LonMap
+)
 
 func WorkN(array_in NumCol, found_values *NumMap) SolLst {
-  return work_n(array_in, found_values)
+	return work_n(array_in, found_values)
 }
 
 func work_n(array_in NumCol, found_values *NumMap) SolLst {
@@ -163,9 +167,11 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 		}
 	}
 	// Add the entire solution list found in the previous loop in one go
-	found_values.AddSol(ret_list)
-	// This now doubles the runtime for no significant improvement
-	//ret_list.CheckDuplicates()
+	found_values.AddSol(ret_list, false)
+	//for _,j := range item.Numbers() {
+	//        j.ProveSol()
+	//        j.SetDifficulty()
+	//}
 	return ret_list
 }
 
@@ -175,7 +181,7 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 	// No system I have access to have enough CPUs for this to be an issue
 	// However the framework seems to be there
 	// TBD make this a comannd line variable
-	var lone_map = true
+	permute_mode := ParMap
 
 	//fmt.Println("Start Permute")
 	less := func(i, j interface{}) bool {
@@ -229,24 +235,28 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 				// It creates a new number map, populates it by working the incoming number set
 				// then merges the number map back into the main numbermap
 				// This is useful if we have more processes than we know what to do with
-				var arthur NumMap
-				var prfl SolLst
 				fv.const_lk.RLock()
-				if found_values.Solved {
+				if fv.Solved {
 					fv.const_lk.RUnlock()
 					coallate_done <- true
 					channel_tokens <- true
 					return
 				}
+				var arthur *NumMap
+				var prfl SolLst
+				arthur = NewNumMap(&prfl) //pass it the proof list so it can auto-check for validity at the en
+			        arthur.UseMult 		= fv.UseMult   
+			        arthur.SelfTest 	= fv.SelfTest 
+			        arthur.SeekShort 	= fv.SeekShort
 				fv.const_lk.RUnlock()
-				arthur = *NewNumMap(&prfl) //pass it the proof list so it can auto-check for validity at the en
-				prfl = work_n(it, &arthur)
-				coallate_chan <- prfl
-				arthur.LastNumMap()
-				channel_tokens <- true // Now we're done, add a token to allow another to start
-				map_merge_chan <- &arthur
-				coallate_done <- true
 
+
+				prfl = work_n(it, arthur)
+				arthur.LastNumMap()
+				coallate_chan <- prfl
+				channel_tokens <- true // Now we're done, add a token to allow another to start
+				map_merge_chan <- arthur
+				coallate_done <- true
 			}
 			worker_lone := func(it NumCol, fv *NumMap) {
 				fv.const_lk.RLock()
@@ -262,18 +272,16 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 				channel_tokens <- true // Now we're done, add a token to allow another to start
 
 			}
-			if !lone_map {
+			if permute_mode == ParMap {
 				go worker_par(bob, found_values)
 			}
-			if lone_map {
+			if permute_mode == LonMap {
 				go worker_lone(bob, found_values)
 			}
 
 		}
 	}
-	//fmt.Println("Starting caller")
 	go caller()
-	//fmt.Println("Caller started")
 	merge_report := false // Turn off reporting of new numbers for first run
 	mwg := new(sync.WaitGroup)
 	mwg.Add(2)
@@ -284,7 +292,7 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 		}
 		mwg.Done()
 	}
-	if !lone_map {
+	if permute_mode == ParMap {
 		mwg.Add(1)
 		go merge_func_worker()
 	}
@@ -293,7 +301,6 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 		for i := 0; i < num_permutations; i++ {
 			<-coallate_done
 		}
-		//fmt.Println("All workers completed so closing coallate channel")
 		close(coallate_chan)
 		close(map_merge_chan)
 		mwg.Done()
@@ -303,6 +310,7 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 	output_merge := func() {
 		for v := range coallate_chan {
 			v.RemoveDuplicates()
+			//fmt.Println("Send Proof")
 			proof_list <- v
 		}
 		close(proof_list)
@@ -310,9 +318,7 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 	}
 	go output_merge()
 	mwg.Wait()
-
 	found_values.LastNumMap()
-
 }
 
 func expand_n(array_a NumCol) []SolLst {

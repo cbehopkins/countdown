@@ -98,5 +98,5 @@ func main() {
                 return
         }
 
-
+        fv.PrintProofs()
 }

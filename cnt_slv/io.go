@@ -2,7 +2,7 @@ package cnt_slv
 
 import (     
 		"encoding/xml"
-//     		"fmt"
+     		"fmt"
 //    		"os"
 //	"github.com/tonnerre/golang-pretty"
 )
@@ -90,3 +90,28 @@ func (item *NumMap) UnMarshalXml (input []byte ) (err error) {
 	}
 	return
 }
+
+
+func ImportXml (message string) () {
+    var prl SolLst
+    fv := NewNumMap(&prl)
+    err := fv.UnMarshalXml([]byte(message))
+    if err != nil {
+          fmt.Printf("error: %v\n", err)
+          return  
+    }
+    fv.PrintProofs()
+}
+
+func (item *NumMap) MergeXml (message string) () {
+    var prl SolLst                                                                                                                                                                                                           
+    fv := NewNumMap(&prl)
+    err := fv.UnMarshalXml([]byte(message))                                                                                                                                                                                           
+    if err != nil {
+          fmt.Printf("error: %v\n", err)                                                                                                                                                                                             
+          return
+    }                                                                                                                                                                                                                                
+    //fv.PrintProofs()
+   item.Merge(fv, true)
+}      
+
