@@ -9,7 +9,6 @@ import  (
 "github.com/cbehopkins/countdown/cnt_slv"
 )
 type UmNetStruct struct {
-//        XMLName   xml.Name `xml:"s,omitempty"`
 	XMLName   xml.Name `xml:"work"`
         Val []int  `xml:"int"`                                                                                                                                                                                                       
 }
@@ -51,19 +50,25 @@ func main() {
         }
       }
     }
-    //fmt.Println("Marshalling")
+    //////////
+    // Take our array of numbers (val_array)
+    // and turnt hem into an xml request ready to send to the network
     bob := UmNetStruct{Val:val_array}
     text,err := xml.Marshal(bob)
-    //fmt.Println("It's", string(text))
-    // send to socket
+    
+    //////////
+    // Now send to an open connection
     fmt.Fprintf(conn, string(text) + "\n")
-    //fmt.Println("Sent")
-    // listen for reply
+
+    //////////
+    // listen for reply on open connection
     message, err := bufio.NewReader(conn).ReadString('\n')
     if (err != nil) {
         fmt.Printf("Read String error: %v\n", err)
     }
-    //fmt.Print("Message from server: "+message)
-    cnt_slv.ImportXml(message)
+
+    //////////
+    // Take the message text we've got back and interpret it
+    cnt_slv.ImportXml(message)	// Import prints the proofs for us - useful for test but not much else
   }
 }

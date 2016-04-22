@@ -1,6 +1,9 @@
 package cnt_slv
 
 import (
+"net"
+"bufio"
+"encoding/xml"
 	"fmt"
 	"log"
 	"runtime"
@@ -13,7 +16,13 @@ import (
 const (
 	ParMap = iota
 	LonMap
+	NetMap
 )
+type UmNetStruct struct {                                                                                                                                                                                                            
+        XMLName   xml.Name `xml:"work"`
+        UseMult bool `xml:"mul"`
+        Val []int  `xml:"int"`                                                                                                                                                                                                       
+}
 
 func WorkN(array_in NumCol, found_values *NumMap) SolLst {
 	return work_n(array_in, found_values)
@@ -181,7 +190,7 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 	// No system I have access to have enough CPUs for this to be an issue
 	// However the framework seems to be there
 	// TBD make this a comannd line variable
-	permute_mode := ParMap
+	permute_mode := LonMap
 
 	//fmt.Println("Start Permute")
 	less := func(i, j interface{}) bool {
@@ -204,17 +213,36 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 
 	num_permutations := p.Left()
 	fmt.Println("Num permutes:", num_permutations)
-	var comms_channels []chan SolLst
-	comms_channels = make([]chan SolLst, num_permutations)
-	for i := range comms_channels {
-		comms_channels[i] = make(chan SolLst, 200)
-	}
+
 	var channel_tokens chan bool
 	channel_tokens = make(chan bool, 512)
+	var net_channels chan net.Conn
+	if (permute_mode == NetMap) {
+		net_channels = make(chan net.Conn, 512)
+	}
 	for i := 0; i < 16; i++ {
 		//fmt.Println("Adding token");
 		channel_tokens <- true
 	}
+	if (permute_mode == NetMap) {
+		net_success := false
+		server := "127.0.0.1:8081"
+		for i := 0; i < 4; i++ {	// Allow 4 connections per server
+			// connect to a socket
+                        conn, err := net.Dial("tcp", server)
+			if (err != nil) {                                                                                                                                                                                     
+                        	fmt.Printf("Dial error: %v\n", err)
+                        } else {
+				net_success = true
+				net_channels <- conn
+			}
+		}
+		if !net_success {
+			fmt.Println("Failed to connect to any servers")
+			return
+		}
+	}
+	
 	coallate_chan := make(chan SolLst, 200)
 	coallate_done := make(chan bool, 8)
 
@@ -235,6 +263,9 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 				// It creates a new number map, populates it by working the incoming number set
 				// then merges the number map back into the main numbermap
 				// This is useful if we have more processes than we know what to do with
+
+				//////////
+				// Check if already solved
 				fv.const_lk.RLock()
 				if fv.Solved {
 					fv.const_lk.RUnlock()
@@ -242,18 +273,25 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 					channel_tokens <- true
 					return
 				}
+
+				//////////
+				// Create the data structures needed to run this set of numbers
 				var arthur *NumMap
 				var prfl SolLst
 				arthur = NewNumMap(&prfl) //pass it the proof list so it can auto-check for validity at the en
-			        arthur.UseMult 		= fv.UseMult   
-			        arthur.SelfTest 	= fv.SelfTest 
+			        arthur.UseMult 		= fv.UseMult
+			        arthur.SelfTest 	= fv.SelfTest
 			        arthur.SeekShort 	= fv.SeekShort
 				fv.const_lk.RUnlock()
 
-
+				//////////
+				// Run the compute
 				prfl = work_n(it, arthur)
 				arthur.LastNumMap()
-				coallate_chan <- prfl
+
+				//////////
+				// Now send the results
+				//coallate_chan <- prfl
 				channel_tokens <- true // Now we're done, add a token to allow another to start
 				map_merge_chan <- arthur
 				coallate_done <- true
@@ -272,12 +310,58 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 				channel_tokens <- true // Now we're done, add a token to allow another to start
 
 			}
+			worker_net := func(it NumCol, fv *NumMap) {
+                                fv.const_lk.RLock()
+				use_mult := fv.UseMult
+                                if fv.Solved {
+                                        fv.const_lk.RUnlock()
+                                        coallate_done <- true
+                                        channel_tokens <- true
+                                        return
+                                }
+                                fv.const_lk.RUnlock()
+				val_array := make ([]int, len(it))
+				for i,j := range it {
+					val_array[i] = j.Val
+				}
+			    	//////////
+   				// Take our array of numbers (val_array)
+   			 	// and turnt hem into an xml request ready to send to the network
+   			 	bob := UmNetStruct{Val:val_array,  UseMult:use_mult}
+   			 	text,err := xml.Marshal(bob)
+
+   			 	//////////
+   			 	// Now send to an open connection
+				conn := <-net_channels	// Grab the connection for as little time as possible
+				fmt.Fprintf(conn, string(text) + "\n")
+
+   			 	//////////
+   			 	// listen for reply on open connection
+   			 	message, err := bufio.NewReader(conn).ReadString('\n')
+   			 	if (err != nil) {
+   			 	    fmt.Printf("Read String error: %v\n", err)
+   			 	}
+				net_channels<-conn
+
+   			 	//////////
+   			 	// Take the message text we've got back and interpret it
+				fv.MergeXml(message)
+				// Not applicable for Net Mode
+				//coallate_chan <- work_n(it, fv)
+				
+                                coallate_done <- true
+                                channel_tokens <- true // Now we're done, add a token to allow another to start
+			}
+
 			if permute_mode == ParMap {
 				go worker_par(bob, found_values)
 			}
 			if permute_mode == LonMap {
 				go worker_lone(bob, found_values)
 			}
+                        if permute_mode == NetMap {
+                                go worker_net(bob, found_values)
+                        }
 
 		}
 	}
@@ -319,6 +403,13 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 	go output_merge()
 	mwg.Wait()
 	found_values.LastNumMap()
+	if permute_mode == NetMap {
+		close (net_channels)
+		for conn := range net_channels {
+			conn.Close()
+		}
+	}
+
 }
 
 func expand_n(array_a NumCol) []SolLst {

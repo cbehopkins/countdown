@@ -7,7 +7,7 @@ import (
 "bufio"
 //"strings"
 "encoding/xml"
-"github.com/tonnerre/golang-pretty"
+//"github.com/tonnerre/golang-pretty"
 "github.com/cbehopkins/countdown/cnt_slv"
 )
 
@@ -33,25 +33,27 @@ func main() {
 }
 type UmNetStruct struct {
         XMLName   xml.Name `xml:"work"`
+	UseMult	bool `xml:"mul"`
 	Val []int  `xml:"int"`
 }
-func UnmarshallNet (input []byte) (result []int) {
+func UnmarshallNet (input []byte) (result []int, use_mult bool){
  	bob := &UmNetStruct{}
  	//var bob []int `xml:"int"`
 	bob.Val  = make([]int, 0,6)
 	result = make([]int, 0,6)
 	err := xml.Unmarshal(input, &bob)
-        if err != nil {                                                                                                                                                                                                              
+        if err != nil {
                 fmt.Printf("error: %v", err)
-                return                                                                                                                                                                                                               
+                return
         }
-        fmt.Printf("We've been given:\n%s\nand we turn this into:\n", input)                                                                                                                                                         
-        pretty.Println(bob)
+        //fmt.Printf("We've been given:\n%s\nand we turn this into:\n", input)
+        //pretty.Println(bob)
+        use_mult = bob.UseMult
         for _,j := range bob.Val {
                 //fmt.Printf("Value of %d\n", j)
 		result = append(result,j)
         }
-	return result
+	return
 }
 func HandleConnection (conn net.Conn) {
 
@@ -69,22 +71,23 @@ func HandleConnection (conn net.Conn) {
     }
     // output message received
     fmt.Print("Message Received:", string(message))
-    int_array := UnmarshallNet([]byte(message))
+    int_array, use_mult := UnmarshallNet([]byte(message))
     var bob cnt_slv.NumCol
-    var proof_list cnt_slv.SolLst                                                                                                                                                                                                
-    found_values := cnt_slv.NewNumMap(&proof_list) //pass it the proof list so it can auto-check for validity at the end                                                                                                         
+    var proof_list cnt_slv.SolLst
+    found_values := cnt_slv.NewNumMap(&proof_list) //pass it the proof list so it can auto-check for validity at the end
     for _,j := range int_array {
-      fmt.Printf("Adding Value of %d\n", j)
+    //  fmt.Printf("Adding Value of %d\n", j)
       bob.AddNum(j, found_values)
     }
+    found_values.UseMult = use_mult
     cnt_slv.WorkN(bob, found_values)
     found_values.LastNumMap()
-    found_values.PrintProofs()
+    //found_values.PrintProofs()
     byte_array, err := found_values.MarshalXml()
     if (err!=nil){
       fmt.Printf("Marshalling Error")
     } else {
-	fmt.Println(string(byte_array))
+	//fmt.Println(string(byte_array))
     }
     newmessage := string(byte_array)
 
