@@ -83,20 +83,5 @@ func main() {
 		}
 	}
 	// TBD on seeks option add in tidy printing of the final solution
-	found_values.PrintProofs()
-	xml_string,err := found_values.MarshalXml()
-        if err != nil {
-              fmt.Printf("error: %v\n", err)
-		return
-        }
-
-	var prl cnt_slv.SolLst
-        fv := cnt_slv.NewNumMap(&prl)
-	err = fv.UnMarshalXml(xml_string)
-	if err != nil {
-              fmt.Printf("error: %v\n", err)
-                return
-        }
-
-        fv.PrintProofs()
+	//found_values.PrintProofs()
 }

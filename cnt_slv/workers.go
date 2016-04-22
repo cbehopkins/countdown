@@ -3,6 +3,7 @@ package cnt_slv
 import (
 "net"
 "bufio"
+"os"
 "encoding/xml"
 	"fmt"
 	"log"
@@ -18,10 +19,10 @@ const (
 	LonMap
 	NetMap
 )
-type UmNetStruct struct {                                                                                                                                                                                                            
+type UmNetStruct struct {
         XMLName   xml.Name `xml:"work"`
         UseMult bool `xml:"mul"`
-        Val []int  `xml:"int"`                                                                                                                                                                                                       
+        Val []int  `xml:"int"`
 }
 
 func WorkN(array_in NumCol, found_values *NumMap) SolLst {
@@ -190,7 +191,8 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 	// No system I have access to have enough CPUs for this to be an issue
 	// However the framework seems to be there
 	// TBD make this a comannd line variable
-	permute_mode := LonMap
+	permute_mode := NetMap
+	required_tokens := 16
 
 	//fmt.Println("Start Permute")
 	less := func(i, j interface{}) bool {
@@ -226,23 +228,47 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 	}
 	if (permute_mode == NetMap) {
 		net_success := false
-		server := "127.0.0.1:8081"
-		for i := 0; i < 4; i++ {	// Allow 4 connections per server
-			// connect to a socket
-                        conn, err := net.Dial("tcp", server)
-			if (err != nil) {                                                                                                                                                                                     
-                        	fmt.Printf("Dial error: %v\n", err)
-                        } else {
-				net_success = true
-				net_channels <- conn
+		cwd,_ := os.Getwd()
+		file, err := os.Open("servers.cfg")
+		if err != nil {
+		    if os.IsNotExist(err) {
+		    	fmt.Println("Network mode disabled, couldn't find servers.cfg in:, " + cwd)
+		    } else {
+		            log.Fatal(err)
+		    }
+		} else {
+			defer file.Close()
+
+			scanner := bufio.NewScanner(file)
+			for scanner.Scan() {
+				var server string
+				server = scanner.Text()
+				fmt.Printf("Trying to connect to server at %s\n",server)
+				for i := 0; i < 4; i++ {	// Allow 4 connections per server
+					// connect to a socket
+                		        conn, err := net.Dial("tcp", server)
+					if (err != nil) {
+                		        	fmt.Printf("Dial error: %v\n", err)
+                		        } else {
+						net_success = true
+						net_channels <- conn
+						required_tokens++
+					}
+				}
 			}
-		}
+                        if err := scanner.Err(); err != nil {
+                            log.Fatal(err)
+                        }
+                }
 		if !net_success {
 			fmt.Println("Failed to connect to any servers")
-			return
+			permute_mode = LonMap
 		}
 	}
-	
+	for i := 0; i < required_tokens; i++ {
+                //fmt.Println("Adding token");
+                channel_tokens <- true
+        }
 	coallate_chan := make(chan SolLst, 200)
 	coallate_done := make(chan bool, 8)
 
@@ -348,7 +374,7 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 				fv.MergeXml(message)
 				// Not applicable for Net Mode
 				//coallate_chan <- work_n(it, fv)
-				
+
                                 coallate_done <- true
                                 channel_tokens <- true // Now we're done, add a token to allow another to start
 			}
