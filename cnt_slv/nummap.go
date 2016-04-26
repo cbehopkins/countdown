@@ -221,7 +221,8 @@ func (item *NumMap) AddProc(proof_list *SolLst) {
 		waiter.Done()
 	}()
 	waiter.Wait()
-	item.done_channel <- true
+	close(item.done_channel)
+
 }
 func (item *NumMap) GetVals() []int {
 	ret_list := make([]int, len(item.nmp))

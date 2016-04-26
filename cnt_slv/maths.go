@@ -2,7 +2,7 @@ package cnt_slv
 
 import (
 	"log"
-
+	"fmt"
 	"github.com/tonnerre/golang-pretty"
 )
 
@@ -23,17 +23,20 @@ func (found_values *NumMap) do_maths(list []*Number) (num_to_make int,
 	b1 := (b == 1)
 
 	if a0 || b0 {
-		log.Fatal("We got 0")
+		log.Fatal("We got 0 as an input to do_maths - who is feeding us rubbish??")
 	}
 
 	add_set = true
 	mul_set = found_values.UseMult
+	num_to_make = 1
 	if mul_set {
-		num_to_make = 2
-	} else {
-		num_to_make = 1 // add_set must be set to reach here
-	}
+		if ((a*b)>0) {
+ 			num_to_make = 2
+		} else {
+			mul_set = false
+		}
 
+	}
 	if a_gt_b {
 		sub_res_amb := a - b
 		amb0 := ((a % b) == 0)
@@ -64,6 +67,7 @@ func (found_values *NumMap) AddItems(list []*Number, ret_list []*Number, current
 	add_set, mul_set, sub_set, div_set, a_gt_b bool) {
 	a := list[0].Val
 	b := list[1].Val
+	saved_current_number_loc:=current_number_loc
 	if add_set {
 		ret_list[current_number_loc].configure(a+b, list, "+", 1)
 		current_number_loc++
@@ -88,6 +92,18 @@ func (found_values *NumMap) AddItems(list []*Number, ret_list []*Number, current
 			ret_list[current_number_loc].configure(b/a, list, "\\", 3)
 		}
 		current_number_loc++
+	}
+	for i:=saved_current_number_loc; i<current_number_loc;i++ {
+		v := ret_list[i]
+		if v.Val <= 0 {
+			pretty.Println(v)
+			fmt.Printf("value %d is %d, %d, %d\n", i,v.Val,a,b)
+			fmt.Printf("add_set=%t, mul_set=%t, sub_set=%t, div_set=%t, a_gt_b=%t\n",add_set, mul_set, sub_set, div_set, a_gt_b)
+			for j:=saved_current_number_loc; j<current_number_loc; j++ {
+				fmt.Printf("Val: %d\n", ret_list[j].Val)
+			}
+			log.Fatal("result <0")
+		}
 	}
 }
 func (found_values *NumMap) make_2_to_1(list NumCol) NumCol {

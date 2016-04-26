@@ -17,6 +17,11 @@ const (
 )
 
 func WorkN(array_in NumCol, found_values *NumMap) SolLst {
+	for _,j := range  array_in {
+		if j.Val ==0 {
+			log.Fatal("WorkN fed a 0 number")
+		}
+	}
 	return work_n(array_in, found_values)
 }
 
@@ -90,6 +95,9 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 		num_numbers_to_make := 0
 		for a_num, err_a := gimmie_a.Next(); err_a == nil; a_num, err_a = gimmie_a.Next() {
 			for b_num, err_b := gimmie_b.Next(); err_b == nil; b_num, err_b = gimmie_b.Next() {
+				if (a_num.Val<=0 || b_num.Val<= 0) {
+					log.Fatalf("Gimmie gave %d, %d", a_num.Val, b_num.Val)
+				}
 				tmp,
 					_, _, _, _, _ := found_values.do_maths([]*Number{a_num, b_num})
 				num_numbers_to_make += tmp
@@ -139,6 +147,9 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 				src_list[current_src+1] = b_num
 				// Shorthand to make code more readable
 				bob_list := src_list[current_src : current_src+2]
+				if (a_num.Val==0 || b_num.Val== 0) {
+					log.Fatalf("Gimmie gave %d, %d", a_num.Val, b_num.Val)
+				}
 
 				num_to_make,
 					add_set, mul_set, sub_set, div_set,
@@ -214,7 +225,7 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 		pstrct.channel_tokens <- true
 	}
 	if permute_mode == NetMap {
-		extra_tokens, all_fail := pstrct.setup_conns()
+		extra_tokens, all_fail := pstrct.setup_conns(found_values)
 		required_tokens += extra_tokens
 		if all_fail {
 			permute_mode = LonMap
@@ -243,7 +254,7 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 				go pstrct.worker_lone(bob, found_values)
 			}
 			if permute_mode == NetMap {
-				go pstrct.worker_net(bob, found_values)
+				go pstrct.worker_net_send(bob, found_values)
 			}
 
 		}
@@ -268,6 +279,13 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 		for i := 0; i < num_permutations; i++ {
 			<-pstrct.coallate_done
 		}
+		if permute_mode == NetMap {
+			// Send a message to all the channels to close them down
+			// and collect the results
+			fmt.Println("all permutes finished, closing channels")
+			pstrct.worker_net_close(found_values)
+			fmt.Println("Network close finished")
+		}
 		close(pstrct.coallate_chan)
 		close(pstrct.map_merge_chan)
 		mwg.Done()
@@ -286,14 +304,6 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 	go output_merge()
 	mwg.Wait()
 	found_values.LastNumMap()
-	if permute_mode == NetMap {
-		for conn := range pstrct.net_channels {
-			conn.Close()
-		}
-		close(pstrct.net_channels)
-
-	}
-
 }
 
 func expand_n(array_a NumCol) []SolLst {
