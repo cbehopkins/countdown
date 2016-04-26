@@ -1,10 +1,6 @@
 package cnt_slv
 
 import (
-"net"
-"bufio"
-"os"
-"encoding/json"
 	"fmt"
 	"log"
 	"runtime"
@@ -19,10 +15,6 @@ const (
 	ParMap
 	NetMap
 )
-type UmNetStruct struct {
-        UseMult bool `json:"mul"`
-        Val []int  `json:"int"`
-}
 
 func WorkN(array_in NumCol, found_values *NumMap) SolLst {
 	return work_n(array_in, found_values)
@@ -215,178 +207,44 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 	num_permutations := p.Left()
 	fmt.Println("Num permutes:", num_permutations)
 
-	var channel_tokens chan bool
-	channel_tokens = make(chan bool, 512)
-	var net_channels chan net.Conn
-	if (permute_mode == NetMap) {
-		net_channels = make(chan net.Conn, 512)
-	}
+	pstrct := new_perm_struct(permute_mode == NetMap)
+
 	for i := 0; i < 16; i++ {
 		//fmt.Println("Adding token");
-		channel_tokens <- true
+		pstrct.channel_tokens <- true
 	}
-	if (permute_mode == NetMap) {
-		net_success := false
-		cwd,_ := os.Getwd()
-		file, err := os.Open("servers.cfg")
-		if err != nil {
-		    if os.IsNotExist(err) {
-		    	fmt.Println("Network mode disabled, couldn't find servers.cfg in:, " + cwd)
-		    } else {
-		            log.Fatal(err)
-		    }
-		} else {
-			defer file.Close()
-
-			scanner := bufio.NewScanner(file)
-			for scanner.Scan() {
-				var server string
-				server = scanner.Text()
-				fmt.Printf("Trying to connect to server at %s\n",server)
-				for i := 0; i < 4; i++ {	// Allow 4 connections per server
-					// connect to a socket
-                		        conn, err := net.Dial("tcp", server)
-					if (err != nil) {
-                		        	fmt.Printf("Dial error: %v\n", err)
-                		        } else {
-						net_success = true
-						net_channels <- conn
-						required_tokens++
-					}
-				}
-			}
-                        if err := scanner.Err(); err != nil {
-                            log.Fatal(err)
-                        }
-                }
-		if !net_success {
-			fmt.Println("Failed to connect to any servers")
+	if permute_mode == NetMap {
+		extra_tokens, all_fail := pstrct.setup_conns()
+		required_tokens += extra_tokens
+		if all_fail {
 			permute_mode = LonMap
 		}
 	}
 	for i := 0; i < required_tokens; i++ {
-                //fmt.Println("Adding token");
-                channel_tokens <- true
-        }
-	coallate_chan := make(chan SolLst, 200)
-	coallate_done := make(chan bool, 8)
+		//fmt.Println("Adding token");
+		pstrct.channel_tokens <- true
+	}
 
-	var map_merge_chan chan *NumMap
-	map_merge_chan = make(chan *NumMap)
 	caller := func() {
 		for result, err := p.Next(); err == nil; result, err = p.Next() {
 			// To control the number of workers we run at once we need to grab a token
 			// remember to return it later
-			<-channel_tokens
+			<-pstrct.channel_tokens
 			fmt.Printf("%3d permutation: left %3d, GoRs %3d\r", p.Index()-1, p.Left(), runtime.NumGoroutine())
 			bob, ok := result.(NumCol)
 			if !ok {
 				log.Fatalf("Error Type conversion problem")
 			}
-			worker_par := func(it NumCol, fv *NumMap) {
-				// This is the parallel worker function
-				// It creates a new number map, populates it by working the incoming number set
-				// then merges the number map back into the main numbermap
-				// This is useful if we have more processes than we know what to do with
-
-				//////////
-				// Check if already solved
-				fv.const_lk.RLock()
-				if fv.Solved {
-					fv.const_lk.RUnlock()
-					coallate_done <- true
-					channel_tokens <- true
-					return
-				}
-
-				//////////
-				// Create the data structures needed to run this set of numbers
-				var arthur *NumMap
-				var prfl SolLst
-				arthur = NewNumMap(&prfl) //pass it the proof list so it can auto-check for validity at the en
-			        arthur.UseMult 		= fv.UseMult
-			        arthur.SelfTest 	= fv.SelfTest
-			        arthur.SeekShort 	= fv.SeekShort
-				fv.const_lk.RUnlock()
-
-				//////////
-				// Run the compute
-				prfl = work_n(it, arthur)
-				arthur.LastNumMap()
-
-				//////////
-				// Now send the results
-				//coallate_chan <- prfl
-				channel_tokens <- true // Now we're done, add a token to allow another to start
-				map_merge_chan <- arthur
-				coallate_done <- true
-			}
-			worker_lone := func(it NumCol, fv *NumMap) {
-				fv.const_lk.RLock()
-				if fv.Solved {
-					fv.const_lk.RUnlock()
-					coallate_done <- true
-					channel_tokens <- true
-					return
-				}
-				fv.const_lk.RUnlock()
-				coallate_chan <- work_n(it, fv)
-				coallate_done <- true
-				channel_tokens <- true // Now we're done, add a token to allow another to start
-
-			}
-			worker_net := func(it NumCol, fv *NumMap) {
-                                fv.const_lk.RLock()
-				use_mult := fv.UseMult
-                                if fv.Solved {
-                                        fv.const_lk.RUnlock()
-                                        coallate_done <- true
-                                        channel_tokens <- true
-                                        return
-                                }
-                                fv.const_lk.RUnlock()
-				val_array := make ([]int, len(it))
-				for i,j := range it {
-					val_array[i] = j.Val
-				}
-			    	//////////
-   				// Take our array of numbers (val_array)
-   			 	// and turnt hem into an json request ready to send to the network
-   			 	bob := UmNetStruct{Val:val_array,  UseMult:use_mult}
-   			 	text,err := json.Marshal(bob)
-
-   			 	//////////
-   			 	// Now send to an open connection
-				conn := <-net_channels	// Grab the connection for as little time as possible
-				fmt.Fprintf(conn, string(text) + "\n")
-
-   			 	//////////
-   			 	// listen for reply on open connection
-   			 	message, err := bufio.NewReader(conn).ReadString('\n')
-   			 	if (err != nil) {
-   			 	    fmt.Printf("Read String error: %v\n", err)
-   			 	}
-				net_channels<-conn
-
-   			 	//////////
-   			 	// Take the message text we've got back and interpret it
-				fv.MergeJson(message)
-				// Not applicable for Net Mode
-				//coallate_chan <- work_n(it, fv)
-
-                                coallate_done <- true
-                                channel_tokens <- true // Now we're done, add a token to allow another to start
-			}
 
 			if permute_mode == ParMap {
-				go worker_par(bob, found_values)
+				go pstrct.worker_par(bob, found_values)
 			}
 			if permute_mode == LonMap {
-				go worker_lone(bob, found_values)
+				go pstrct.worker_lone(bob, found_values)
 			}
-                        if permute_mode == NetMap {
-                                go worker_net(bob, found_values)
-                        }
+			if permute_mode == NetMap {
+				go pstrct.worker_net(bob, found_values)
+			}
 
 		}
 	}
@@ -395,7 +253,7 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 	mwg := new(sync.WaitGroup)
 	mwg.Add(2)
 	merge_func_worker := func() {
-		for v := range map_merge_chan {
+		for v := range pstrct.map_merge_chan {
 			found_values.Merge(v, merge_report)
 			merge_report = true
 		}
@@ -408,16 +266,16 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 	// This little go function waits for all the procs to have a done channel and then closes the channel
 	done_control := func() {
 		for i := 0; i < num_permutations; i++ {
-			<-coallate_done
+			<-pstrct.coallate_done
 		}
-		close(coallate_chan)
-		close(map_merge_chan)
+		close(pstrct.coallate_chan)
+		close(pstrct.map_merge_chan)
 		mwg.Done()
 	}
 	go done_control()
 
 	output_merge := func() {
-		for v := range coallate_chan {
+		for v := range pstrct.coallate_chan {
 			v.RemoveDuplicates()
 			//fmt.Println("Send Proof")
 			proof_list <- v
@@ -429,10 +287,11 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 	mwg.Wait()
 	found_values.LastNumMap()
 	if permute_mode == NetMap {
-		close (net_channels)
-		for conn := range net_channels {
+		for conn := range pstrct.net_channels {
 			conn.Close()
 		}
+		close(pstrct.net_channels)
+
 	}
 
 }

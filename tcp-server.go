@@ -31,8 +31,10 @@ func main() {
     }
   }
 }
+// FIXME tidy this up
 type UmNetStruct struct {
 	UseMult	bool `json:"mul"`
+	PostResult bool `json:"post"`
 	Val []int  `json:"int"`
 }
 func UnmarshallNet (input []byte) (result []int, use_mult bool){
@@ -89,11 +91,6 @@ func HandleConnection (conn net.Conn) {
 	//fmt.Println(string(byte_array))
     }
     newmessage := string(byte_array)
-
-
-
-    // sample process for string received
-    //newmessage := strings.ToUpper(message)
     // send new string back to client
     _,err = conn.Write([]byte(newmessage + "\n"))
     if (err != nil) {
