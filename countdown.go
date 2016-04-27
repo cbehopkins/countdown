@@ -32,13 +32,16 @@ func main() {
 	var dmflg = flag.Bool("dism", false, "Disable nultiplication")
 	var stflg = flag.Bool("selft", false, "Check our own internals as we go")
 	var srflg = flag.Bool("seeks", false, "Seek the shortest proof, as opposed to the quickest one to find")
+	var ntflg = flag.Bool("net", false, "Attempt to use network mode")
 	flag.Parse()
 
 	// Global control flags default to test mode
 	found_values.UseMult = *muflg
 	found_values.SelfTest = *stflg
 	found_values.SeekShort = *srflg
-	found_values.PermuteMode = cnt_slv.NetMap
+	if (*ntflg) {
+		found_values.PermuteMode = cnt_slv.NetMap
+	}
 	if *tgflg > 0 {
 		if *dmflg == false {
 			found_values.UseMult = true
