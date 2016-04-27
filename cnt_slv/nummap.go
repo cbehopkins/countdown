@@ -134,12 +134,14 @@ func (item *NumMap) AddMany(b ...*Number) {
 
 func (item *NumMap) AddSol(a SolLst, report bool) {
 	item.map_lock.Lock()
+	item.const_lk.RLock()
 	for _, b := range a {
 		for _, c := range b {
 			//fmt.Println("Ading Value:", c.Val)
 			item.add_item(c.Val, c, false)
 		}
 	}
+	item.const_lk.RUnlock()
 	item.map_lock.Unlock()
 }
 func (item *NumMap) Merge(a *NumMap, report bool) {
@@ -163,11 +165,7 @@ func (item *NumMap) Merge(a *NumMap, report bool) {
 
 func (item *NumMap) add_item(value int, stct *Number, report bool) {
 	// The lock on the map structure must be grabbed outside
-	//item.map_lock.Lock()
-	//defer item.map_lock.Unlock()
 	retr, ok := item.nmp[value]
-	item.const_lk.RLock()
-	//defer item.const_lk.RUnlock()
 	if !ok {
 		item.nmp[value] = stct
 		if item.TargetSet {
@@ -181,22 +179,13 @@ func (item *NumMap) add_item(value int, stct *Number, report bool) {
 					item.const_lk.Lock()
 					item.Solved = true
 					item.const_lk.Unlock()
+					item.const_lk.RLock()
 				}
-			} else {
-				item.const_lk.RUnlock()
 			}
-		} else {
-			item.const_lk.RUnlock()
 		}
-
 	} else if item.SeekShort && (retr.difficulty > stct.difficulty) {
-		item.const_lk.RUnlock()
 		// In seek short mode, then update when it has a shorter proof
 		item.nmp[value] = stct
-
-		//fmt.Printf("Value %d, = %s, Proof Len is %d, Difficulty is %d\n", bob.b.Val, bob.b.ProveIt(), bob.b.ProofLen(), bob.b.difficulty)
-	} else {
-		item.const_lk.RUnlock()
 	}
 }
 func (item *NumMap) AddProc(proof_list *SolLst) {
@@ -205,9 +194,11 @@ func (item *NumMap) AddProc(proof_list *SolLst) {
 	go func() {
 		for fred := range item.input_channel_array {
 			item.map_lock.Lock()
+			item.const_lk.RLock()
 			for _, bob := range fred {
 				item.add_item(bob.a, bob.b, false)
 			}
+			item.const_lk.RUnlock()
 			item.map_lock.Unlock()
 		}
 		waiter.Done()
@@ -215,7 +206,9 @@ func (item *NumMap) AddProc(proof_list *SolLst) {
 	go func() {
 		for bob := range item.input_channel {
 			item.map_lock.Lock()
+			item.const_lk.RLock()
 			item.add_item(bob.a, bob.b, false)
+			item.const_lk.RUnlock()
 			item.map_lock.Unlock()
 		}
 		waiter.Done()

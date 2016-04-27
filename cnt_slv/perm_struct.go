@@ -138,7 +138,9 @@ func (ps *perm_struct) worker_net_send (it NumCol, fv *NumMap) {
 
         //////////
         // Take the message text we've got back and interpret it
-        fv.MergeJson(message)
+	if len(message)>3 {
+        	fv.MergeJson(message)
+	}
 
 	ps.net_channels <- conn
 	ps.channel_tokens <- true // Now we're done, add a token to allow another to start
@@ -152,6 +154,7 @@ func (ps *perm_struct) worker_net_close (fv *NumMap) {
                 return	// FIXME add error return
         }
 	close(ps.net_channels)
+	var par_merge sync.WaitGroup
 	for conn := range ps.net_channels {
 		// Send a message to each channel to close the connection
 		//fmt.Printf("Sending Request for end::" + string(text)+"\n")
@@ -167,12 +170,22 @@ func (ps *perm_struct) worker_net_close (fv *NumMap) {
 
        		//////////
        		// Take the message text we've got back and interpret it
-       		fv.MergeJson(message)
+		par_merge.Add(1)
+		go func () {
+	       		fv.MergeJson(message)
+			//err := fv.FastUnMarshalJson([]byte(message))
+			//if (err !=nil) {
+			//	fmt.Printf("Fast Unmarshall error %v\n", err)
+			//	return // FIXME
+			//}
+			par_merge.Done()
+		} ()
 	}
 	for conn := range ps.net_channels {
 		// Fixme this can probably be spawned
                 conn.Close()
 	}
+	par_merge.Wait()
 }
 
 

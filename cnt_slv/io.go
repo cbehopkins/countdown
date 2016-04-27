@@ -1,6 +1,6 @@
 package cnt_slv
 
-import (     
+import (
 		"encoding/json"
      		"fmt"
 //    		"os"
@@ -65,7 +65,7 @@ func (item *NumMap) MarshalJson () (output []byte, err error) {
 
   	//s := string(output)
   	//fmt.Println(s)
-	return 
+	return
 }
 func (item *NumMap) UnMarshalJson (input []byte ) (err error) {
 	v := NewJsonStruct(0)
@@ -74,8 +74,6 @@ func (item *NumMap) UnMarshalJson (input []byte ) (err error) {
 		//fmt.Printf("error: %v", err)
 		return
 	}
-	//fmt.Printf("We've been given:\n%s\nand we turn this into:\n", input)
-	//pretty.Println(v)
 	for _,j := range v.List {
 		//fmt.Printf("Value of %d\n", j.Val)
 		item.AddJsonNum(j)
@@ -89,6 +87,19 @@ func (item *NumMap) UnMarshalJson (input []byte ) (err error) {
 	return
 }
 
+func (item *NumMap) FastUnMarshalJson (input []byte ) (err error) {
+        v := NewJsonStruct(0)
+        err = json.Unmarshal(input, v)
+        if err != nil {
+                fmt.Printf("error: %v", err)
+                return
+        }
+        for _,j := range v.List {
+                //fmt.Printf("Value of %d\n", j.Val)
+                item.AddJsonNum(j)
+        }
+        return
+}
 
 func ImportJson (message string) () {
     var prl SolLst
@@ -96,20 +107,20 @@ func ImportJson (message string) () {
     err := fv.UnMarshalJson([]byte(message))
     if err != nil {
           fmt.Printf("error: %v\n", err)
-          return  
+          return
     }
     fv.PrintProofs()
 }
 
 func (item *NumMap) MergeJson (message string) () {
-    var prl SolLst                                                                                                                                                                                                           
+    var prl SolLst
     fv := NewNumMap(&prl)
-    err := fv.UnMarshalJson([]byte(message))                                                                                                                                                                                           
+    err := fv.UnMarshalJson([]byte(message))
     if err != nil {
-          fmt.Printf("error: %v\n", err)                                                                                                                                                                                             
+          fmt.Printf("error: %v\n", err)
           return
-    }                                                                                                                                                                                                                                
+    }
     //fv.PrintProofs()
    item.Merge(fv, true)
-}      
+}
 
