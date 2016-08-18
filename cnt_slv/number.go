@@ -3,7 +3,7 @@ package cnt_slv
 import (
 	"fmt"
 	"log"
-
+	"strconv"
 	"github.com/tonnerre/golang-pretty"
 )
 
@@ -262,7 +262,8 @@ func (i *Number) String() string {
 	val = i.Val
 	//pretty.Print(i)
 	if i.list == nil {
-		proof = fmt.Sprintf("%d", val)
+		//proof = fmt.Sprintf("%d", val)
+		proof = strconv.Itoa(val)
 	} else {
 		proof = ""
 		op := ""

@@ -1,8 +1,9 @@
 package cnt_slv
 
 import (
-	"fmt"
+//	"fmt"
 	"sort"
+	"strconv"
 )
 
 // So NumCol is a collection of numbers
@@ -81,7 +82,8 @@ func (item NumCol) String() string {
 	}
 	sort.Ints(tmp_array)
 	for _, v := range tmp_array {
-		ret_str = ret_str + comma + fmt.Sprintf("%d", v)
+		//ret_str = ret_str + comma + fmt.Sprintf("%d", v)
+		ret_str = ret_str + comma + strconv.Itoa(v)
 		comma = ","
 	}
 	return ret_str
@@ -95,7 +97,8 @@ func (proof_list SolLst) String() string {
 			var Value int
 			Value = w.Val
 
-			ret_val = ret_val + fmt.Sprintf("Value %3d, = ", Value) + w.String() + "\n"
+			//ret_val = ret_val + fmt.Sprintf("Value %3d, = ", Value) + w.String() + "\n"
+			ret_val = ret_val + "Value "+ strconv.Itoa(Value) + ", = " + w.String() + "\n"
 		}
 	}
 	ret_val = ret_val + "Done printing proofs\n"

@@ -52,7 +52,7 @@ func (item *NumMap) AddJsonNum (input JsonNum) (new_number Number) {
 func (item *NumMap) MarshalJson () (output []byte, err error) {
 	thing_list := NewJsonStruct(len(item.nmp))
 
-        for _, v := range item.nmp {
+    for _, v := range item.nmp {
 		tmp := AddNum(*v)
 		thing_list.Add(tmp)
 	}
