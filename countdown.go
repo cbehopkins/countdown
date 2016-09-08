@@ -39,7 +39,7 @@ func main() {
 	found_values.UseMult = *muflg
 	found_values.SelfTest = *stflg
 	found_values.SeekShort = *srflg
-	if (*ntflg) {
+	if *ntflg {
 		found_values.PermuteMode = cnt_slv.NetMap
 	}
 	if *tgflg > 0 {
