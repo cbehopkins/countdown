@@ -38,7 +38,7 @@ type NumMap struct {
 	PermuteMode int
 }
 
-func NewNumMap(proof_list *SolLst) *NumMap {
+func NewNumMap() *NumMap {
 	p := new(NumMap)
 	p.nmp = make(map[int]*Number)
 	p.input_channel = make(chan NumMapAtom, 1000)
@@ -46,7 +46,7 @@ func NewNumMap(proof_list *SolLst) *NumMap {
 	p.done_channel = make(chan bool)
 	p.TargetSet = false
 
-	go p.AddProc(proof_list)
+	go p.AddProc()
 
 	p.num_struct_queue = make(chan *Number, 1024)
 
@@ -192,7 +192,7 @@ func (item *NumMap) add_item(value int, stct *Number, report bool) {
 		item.nmp[value] = stct
 	}
 }
-func (item *NumMap) AddProc(proof_list *SolLst) {
+func (item *NumMap) AddProc() {
 	waiter := new(sync.WaitGroup)
 	waiter.Add(2)
 	go func() {

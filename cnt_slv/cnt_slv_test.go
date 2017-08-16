@@ -49,7 +49,7 @@ func TestOne(t *testing.T) {
 
 	var proof_list SolLst
 	var bob NumCol
-	found_values := NewNumMap(&proof_list) //pass it the proof list so it can auto-check for validity at the end
+	found_values := NewNumMap() //pass it the proof list so it can auto-check for validity at the end
 
 	found_values.SelfTest = true
 	found_values.UseMult = true
@@ -101,7 +101,7 @@ func TestMany(t *testing.T) {
 	for _, item := range test_set {
 		proof_list := *new(SolLst)
 		bob := *new(NumCol)
-		found_values := NewNumMap(&proof_list) //pass it the proof list so it can auto-check for validity at the end
+		found_values := NewNumMap() //pass it the proof list so it can auto-check for validity at the end
 		found_values.SelfTest = true
 		found_values.UseMult = true
 		found_values.PermuteMode = rand.Intn(3) // Select a random mode
@@ -158,7 +158,7 @@ func TestFail(t *testing.T) {
 	for _, item := range test_set {
 		proof_list := *new(SolLst)
 		bob := *new(NumCol)
-		found_values := NewNumMap(&proof_list) //pass it the proof list so it can auto-check for validity at the end
+		found_values := NewNumMap() //pass it the proof list so it can auto-check for validity at the end
 		found_values.SelfTest = true
 		found_values.UseMult = true
 
@@ -199,7 +199,7 @@ func TestIt(t *testing.T) {
 
 	var proof_list SolLst
 	var bob NumCol
-	found_values := NewNumMap(&proof_list) //pass it the proof list so it can auto-check for validity at the end
+	found_values := NewNumMap() //pass it the proof list so it can auto-check for validity at the end
 
 	found_values.SelfTest = true
 	found_values.UseMult = true
@@ -234,8 +234,8 @@ func TestReduction(t *testing.T) {
 	var proof_list1 SolLst
 	var bob0 NumCol
 	var bob1 NumCol
-	found_values0 := NewNumMap(&proof_list0) //pass it the proof list so it can auto-check for validity at the end
-	found_values1 := NewNumMap(&proof_list1) //pass it the proof list so it can auto-check for validity at the end
+	found_values0 := NewNumMap() //pass it the proof list so it can auto-check for validity at the end
+	found_values1 := NewNumMap() //pass it the proof list so it can auto-check for validity at the end
 
 	found_values0.SelfTest = true
 	found_values0.UseMult = true
@@ -289,7 +289,7 @@ func TestReduction(t *testing.T) {
 	proof_list2 = append(proof_list2, proof_list0...)
 	proof_list0.RemoveDuplicates()
 	fmt.Printf("Size Before %d; Size after %d\n", len(proof_list2), len(proof_list0))
-	found_values2 := NewNumMap(&proof_list2)
+	found_values2 := NewNumMap()
 	found_values2.SelfTest = true
 	found_values2.UseMult = true
 
@@ -308,9 +308,7 @@ func BenchmarkWorkn(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()
-		var proof_list SolLst
-
-		found_values := NewNumMap(&proof_list)
+		found_values := NewNumMap()
 		found_values.SelfTest = true
 		found_values.UseMult = true
 		var bob NumCol

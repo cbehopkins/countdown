@@ -75,8 +75,7 @@ func (ps *perm_struct) worker_par(it NumCol, fv *NumMap) {
 	//////////
 	// Create the data structures needed to run this set of numbers
 	var arthur *NumMap
-	var prfl SolLst
-	arthur = NewNumMap(&prfl) //pass it the proof list so it can auto-check for validity at the en
+	arthur = NewNumMap() //pass it the proof list so it can auto-check for validity at the en
 	arthur.UseMult = fv.UseMult
 	arthur.SelfTest = fv.SelfTest
 	arthur.SeekShort = fv.SeekShort
@@ -84,7 +83,7 @@ func (ps *perm_struct) worker_par(it NumCol, fv *NumMap) {
 
 	//////////
 	// Run the compute
-	prfl = work_n(it, arthur)
+	work_n(it, arthur)
 	arthur.LastNumMap()
 
 	//////////
@@ -286,9 +285,13 @@ func (pstrct *perm_struct) Workers(proof_list chan SolLst) {
 func (pstrct *perm_struct) output_merge(proof_list chan SolLst) {
 	for v := range pstrct.coallate_chan {
 		v.RemoveDuplicates()
-		proof_list <- v
+		if proof_list != nil {
+			proof_list <- v
+		}
 	}
-	close(proof_list)
+	if proof_list != nil {
+		close(proof_list)
+	}
 	pstrct.mwg.Done()
 }
 func (pstrct *perm_struct) merge_func_worker() {
@@ -352,7 +355,7 @@ func RunPermute(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 	//fmt.Println("Start Permute")
 
 	pstrct := new_perm_struct(array_in, found_values)
-	required_tokens := 16
+	required_tokens := 64
 	pstrct.NumWorkers(required_tokens)
 	pstrct.Workers(proof_list)
 

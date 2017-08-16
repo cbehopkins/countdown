@@ -108,8 +108,7 @@ func (item *NumMap) FastUnMarshalJson(input []byte) (err error) {
 }
 
 func ImportJson(message string) {
-	var prl SolLst
-	fv := NewNumMap(&prl)
+	fv := NewNumMap()
 	err := fv.UnMarshalJson([]byte(message))
 	if err != nil {
 		fmt.Printf("error: %v\n", err)
@@ -119,8 +118,7 @@ func ImportJson(message string) {
 }
 
 func (item *NumMap) MergeJson(message string) {
-	var prl SolLst
-	fv := NewNumMap(&prl)
+	fv := NewNumMap()
 	err := fv.UnMarshalJson([]byte(message))
 	if err != nil {
 		fmt.Printf("error: %v\n", err)

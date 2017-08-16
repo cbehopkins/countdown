@@ -19,7 +19,7 @@ func TestWorkn(t *testing.T) {
 	var mk327 NumCol
 	var combined NumCol
 
-	found_values := NewNumMap(&proof400) //pass it the proof list so it can auto-check for validity at the end
+	found_values := NewNumMap() //pass it the proof list so it can auto-check for validity at the end
 
 	found_values.SelfTest = true
 	found_values.UseMult = true
