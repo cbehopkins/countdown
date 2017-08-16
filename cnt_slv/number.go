@@ -2,9 +2,10 @@ package cnt_slv
 
 import (
 	"fmt"
-	"github.com/tonnerre/golang-pretty"
 	"log"
 	"strconv"
+
+	"github.com/tonnerre/golang-pretty"
 )
 
 // number.go contains the basics of manipulating our number type
@@ -24,6 +25,19 @@ func NewNumber(input_a int, input_b []*Number, operation string, difficult int) 
 	return &new_num
 }
 
+func lessNumber(i, j interface{}) bool {
+	tmp, ok := i.(*Number)
+	if !ok {
+		log.Fatal("Can't compare an empty number")
+	}
+	v1 := tmp.Val
+	tmp, ok = j.(*Number)
+	if !ok {
+		log.Fatal("Can't compare an empty number")
+	}
+	v2 := tmp.Val
+	return v1 < v2
+}
 func (num *Number) configure(input_a int, input_b []*Number, operation string, difficult int) {
 	num.Val = input_a
 

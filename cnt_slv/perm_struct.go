@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"runtime"
 	"sync"
 
 	"github.com/cbehopkins/permutation"
@@ -21,6 +22,8 @@ type UmNetStruct struct {
 type perm_struct struct {
 	p                *permutation.Permutator
 	num_permutations int
+	permute_mode     int
+	fv               *NumMap
 	channel_tokens   chan bool
 	net_channels     chan net.Conn
 	coallate_chan    chan SolLst
@@ -30,12 +33,21 @@ type perm_struct struct {
 	mwg              *sync.WaitGroup
 }
 
-func new_perm_struct(p *permutation.Permutator, net_it bool) *perm_struct {
+func new_perm_struct(array_in NumCol, found_values *NumMap) *perm_struct {
+
+	p, err := permutation.NewPerm(array_in, lessNumber)
+	if err != nil {
+		fmt.Println(err)
+	}
+
 	itm := new(perm_struct)
 	itm.p = p
+	itm.fv = found_values
+	// Local copy as we may override it
+	itm.permute_mode = found_values.PermuteMode
 	itm.num_permutations = p.Left()
 	itm.channel_tokens = make(chan bool, 512)
-	if net_it {
+	if found_values.PermuteMode == NetMap {
 		itm.net_channels = make(chan net.Conn, 512)
 	}
 	itm.coallate_chan = make(chan SolLst, 200)
@@ -240,31 +252,36 @@ func (pstrct *perm_struct) setup_conns(fv *NumMap) (extra_tokens int, all_fail b
 }
 
 // This little go function waits for all the procs to have a done channel and then closes the channel
-func (pstrct *perm_struct) done_control(permute_mode int, found_values *NumMap) {
+func (pstrct *perm_struct) done_control() {
 	for i := 0; i < pstrct.num_permutations; i++ {
 		<-pstrct.coallate_done
 	}
-	if permute_mode == NetMap {
+	if pstrct.permute_mode == NetMap {
 		// Send a message to all the channels to close them down
 		// and collect the results
 		//fmt.Println("all permutes finished, closing channels")
-		pstrct.worker_net_close(found_values)
+		pstrct.worker_net_close(pstrct.fv)
 		//fmt.Println("Network close finished")
 	}
 	close(pstrct.coallate_chan)
 	close(pstrct.map_merge_chan)
 	pstrct.mwg.Done()
 }
-func (pstrct *perm_struct) Workers(permute_mode int, found_values *NumMap, proof_list chan SolLst) {
+func (pstrct *perm_struct) Workers(proof_list chan SolLst) {
+	// Launch tjhe thing what will actually do the work
+	go pstrct.Work()
 	pstrct.mwg.Add(2)
-	if permute_mode == ParMap {
+	if pstrct.permute_mode == ParMap {
 		pstrct.mwg.Add(1)
-		go pstrct.merge_func_worker(found_values)
+		go pstrct.merge_func_worker()
 	}
 
-	go pstrct.done_control(permute_mode, found_values)
+	// This will run until Work and workers it spawned are complete then Done mwg
+	go pstrct.done_control()
+	// Thsi will if needed merge together the resuls and then Done mwg
 	go pstrct.output_merge(proof_list)
-
+	// wait for all then Done on mwg
+	pstrct.Wait()
 }
 func (pstrct *perm_struct) output_merge(proof_list chan SolLst) {
 	for v := range pstrct.coallate_chan {
@@ -274,10 +291,10 @@ func (pstrct *perm_struct) output_merge(proof_list chan SolLst) {
 	close(proof_list)
 	pstrct.mwg.Done()
 }
-func (pstrct *perm_struct) merge_func_worker(found_values *NumMap) {
+func (pstrct *perm_struct) merge_func_worker() {
 	merge_report := false // Turn off reporting of new numbers for first run
 	for v := range pstrct.map_merge_chan {
-		found_values.Merge(v, merge_report)
+		pstrct.fv.Merge(v, merge_report)
 		merge_report = true
 	}
 	pstrct.mwg.Done()
@@ -286,7 +303,63 @@ func (pstrct *perm_struct) Wait() {
 	pstrct.mwg.Wait()
 }
 func (pstrct *perm_struct) NumWorkers(cnt int) {
-	for i := 0; i < 16; i++ {
+	if pstrct.permute_mode == NetMap {
+		extra_tokens, all_fail := pstrct.setup_conns(pstrct.fv)
+		cnt += extra_tokens
+		if all_fail {
+			pstrct.SetPM(LonMap)
+		}
+	}
+	for i := 0; i < cnt; i++ {
 		pstrct.channel_tokens <- true
 	}
+}
+func (pstrct *perm_struct) Launch(bob NumCol) {
+	if pstrct.permute_mode == ParMap {
+		go pstrct.worker_par(bob, pstrct.fv)
+	}
+	if pstrct.permute_mode == LonMap {
+		go pstrct.worker_lone(bob, pstrct.fv)
+	}
+	if pstrct.permute_mode == NetMap {
+		go pstrct.worker_net_send(bob, pstrct.fv)
+	}
+}
+func (pstrct *perm_struct) Work() {
+	p := pstrct.p
+	for result, err := p.Next(); err == nil; result, err = p.Next() {
+		// To control the number of workers we run at once we need to grab a token
+		// remember to return it later
+		<-pstrct.channel_tokens
+		fmt.Printf("%3d permutation: left %3d, GoRs %3d\r", p.Index()-1, p.Left(), runtime.NumGoroutine())
+		bob, ok := result.(NumCol)
+		if !ok {
+			log.Fatalf("Error Type conversion problem")
+		}
+		pstrct.Launch(bob)
+	}
+}
+func (pstrct *perm_struct) SetPM(val int) {
+	pstrct.permute_mode = val
+}
+func RunPermute(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
+	// If your number of workers is limited by access to the centralmap
+	// Then we have the ability to use several number maps and then merge them
+	// No system I have access to have enough CPUs for this to be an issue
+	// However the framework seems to be there
+	// TBD make this a comannd line variable
+
+	//fmt.Println("Start Permute")
+
+	pstrct := new_perm_struct(array_in, found_values)
+	required_tokens := 16
+	pstrct.NumWorkers(required_tokens)
+	pstrct.Workers(proof_list)
+
+	found_values.LastNumMap()
+}
+func permuteN(array_in NumCol, found_values *NumMap) (proof_list chan SolLst) {
+	return_proofs := make(chan SolLst, 16)
+	go RunPermute(array_in, found_values, return_proofs)
+	return return_proofs
 }

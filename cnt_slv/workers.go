@@ -1,12 +1,8 @@
 package cnt_slv
 
-import (
-	"fmt"
-	"log"
-	"runtime"
-	//"github.com/fighterlyt/permutation"
-	"github.com/cbehopkins/permutation"
-)
+import "log"
+
+//"github.com/fighterlyt/permutation"
 
 // workers contains the worker functions
 // That is the functions that work on the lists to turn them into
@@ -147,82 +143,4 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 	// Add the entire solution list found in the previous loop in one go
 	found_values.AddSol(ret_list, false)
 	return ret_list
-}
-func permuteN(array_in NumCol, found_values *NumMap) (proof_list chan SolLst) {
-	return_proofs := make(chan SolLst, 16)
-	go PermuteN(array_in, found_values, return_proofs)
-	return return_proofs
-}
-func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
-	// If your number of workers is limited by access to the centralmap
-	// Then we have the ability to use several number maps and then merge them
-	// No system I have access to have enough CPUs for this to be an issue
-	// However the framework seems to be there
-	// TBD make this a comannd line variable
-	permute_mode := found_values.PermuteMode
-	required_tokens := 16
-
-	//fmt.Println("Start Permute")
-	less := func(i, j interface{}) bool {
-		tmp, ok := i.(*Number)
-		if !ok {
-			log.Fatal("Can't compare an empty number")
-		}
-		v1 := tmp.Val
-		tmp, ok = j.(*Number)
-		if !ok {
-			log.Fatal("Can't compare an empty number")
-		}
-		v2 := tmp.Val
-		return v1 < v2
-	}
-	p, err := permutation.NewPerm(array_in, less)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	pstrct := new_perm_struct(p, permute_mode == NetMap)
-	pstrct.NumWorkers(16)
-
-	if permute_mode == NetMap {
-		extra_tokens, all_fail := pstrct.setup_conns(found_values)
-		required_tokens += extra_tokens
-		if all_fail {
-			permute_mode = LonMap
-		}
-	}
-	for i := 0; i < required_tokens; i++ {
-		//fmt.Println("Adding token");
-		pstrct.channel_tokens <- true
-	}
-
-	caller := func() {
-		for result, err := p.Next(); err == nil; result, err = p.Next() {
-			// To control the number of workers we run at once we need to grab a token
-			// remember to return it later
-			<-pstrct.channel_tokens
-			fmt.Printf("%3d permutation: left %3d, GoRs %3d\r", p.Index()-1, p.Left(), runtime.NumGoroutine())
-			bob, ok := result.(NumCol)
-			if !ok {
-				log.Fatalf("Error Type conversion problem")
-			}
-
-			if permute_mode == ParMap {
-				go pstrct.worker_par(bob, found_values)
-			}
-			if permute_mode == LonMap {
-				go pstrct.worker_lone(bob, found_values)
-			}
-			if permute_mode == NetMap {
-				go pstrct.worker_net_send(bob, found_values)
-			}
-
-		}
-	}
-	go caller()
-
-	pstrct.Workers(permute_mode, found_values, proof_list)
-
-	pstrct.Wait()
-	found_values.LastNumMap()
 }

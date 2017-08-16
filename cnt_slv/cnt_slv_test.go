@@ -9,7 +9,6 @@ import (
 	"runtime/pprof"
 	"sync"
 	"testing"
-	"time"
 )
 
 type testset struct {
@@ -192,13 +191,7 @@ func TestFail(t *testing.T) {
 		} else {
 			t.Log("Failed Correctly")
 		}
-		found_values = nil
-		bob = nil
-		return_proofs = nil
-		proof_list = nil
-		runtime.GC()
 	}
-	time.Sleep(time.Second * 10)
 }
 func TestIt(t *testing.T) {
 	//var target int
