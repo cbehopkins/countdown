@@ -28,7 +28,6 @@ func main() {
 	found_values := cnt_slv.NewNumMap(&proof_list) //pass it the proof list so it can auto-check for validity at the end
 
 	var tgflg = flag.Int("target", 0, "Define the target number to reach")
-	var muflg = flag.Bool("mult", false, "Turn on multiplication")
 	var dmflg = flag.Bool("dism", false, "Disable nultiplication")
 	var stflg = flag.Bool("selft", false, "Check our own internals as we go")
 	var srflg = flag.Bool("seeks", false, "Seek the shortest proof, as opposed to the quickest one to find")
@@ -36,7 +35,6 @@ func main() {
 	flag.Parse()
 
 	// Global control flags default to test mode
-	found_values.UseMult = *muflg
 	found_values.SelfTest = *stflg
 	found_values.SeekShort = *srflg
 	if *ntflg {

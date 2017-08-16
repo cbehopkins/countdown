@@ -8,24 +8,32 @@ import (
 	"net"
 	"os"
 	"sync"
+
+	"github.com/cbehopkins/permutation"
 )
+
 type UmNetStruct struct {
-        UseMult bool  `json:"mul"`
-        PostResult bool `json:"post,omitempty"`	// Postpone sending of the result
-        Val     []int `json:"int"`
+	UseMult    bool  `json:"mul"`
+	PostResult bool  `json:"post,omitempty"` // Postpone sending of the result
+	Val        []int `json:"int"`
 }
 
 type perm_struct struct {
-	channel_tokens chan bool
-	net_channels   chan net.Conn
-	coallate_chan  chan SolLst
-	coallate_done  chan bool
-	map_merge_chan chan *NumMap
-	active_conns   sync.WaitGroup
+	p                *permutation.Permutator
+	num_permutations int
+	channel_tokens   chan bool
+	net_channels     chan net.Conn
+	coallate_chan    chan SolLst
+	coallate_done    chan bool
+	map_merge_chan   chan *NumMap
+	active_conns     sync.WaitGroup
+	mwg              *sync.WaitGroup
 }
 
-func new_perm_struct(net_it bool) *perm_struct {
+func new_perm_struct(p *permutation.Permutator, net_it bool) *perm_struct {
 	itm := new(perm_struct)
+	itm.p = p
+	itm.num_permutations = p.Left()
 	itm.channel_tokens = make(chan bool, 512)
 	if net_it {
 		itm.net_channels = make(chan net.Conn, 512)
@@ -33,6 +41,7 @@ func new_perm_struct(net_it bool) *perm_struct {
 	itm.coallate_chan = make(chan SolLst, 200)
 	itm.coallate_done = make(chan bool, 8)
 	itm.map_merge_chan = make(chan *NumMap)
+	itm.mwg = new(sync.WaitGroup)
 	return itm
 }
 func (ps *perm_struct) worker_par(it NumCol, fv *NumMap) {
@@ -87,7 +96,7 @@ func (ps *perm_struct) worker_lone(it NumCol, fv *NumMap) {
 	ps.channel_tokens <- true // Now we're done, add a token to allow another to start
 
 }
-func (ps *perm_struct) worker_net_send (it NumCol, fv *NumMap) {
+func (ps *perm_struct) worker_net_send(it NumCol, fv *NumMap) {
 	fv.const_lk.RLock()
 	use_mult := fv.UseMult
 	if fv.Solved {
@@ -104,17 +113,17 @@ func (ps *perm_struct) worker_net_send (it NumCol, fv *NumMap) {
 	//////////
 	// Take our array of numbers (val_array)
 	// and turn them into an json request ready to send to the network
-	bob := UmNetStruct{Val: val_array, UseMult: use_mult, PostResult:true}
+	bob := UmNetStruct{Val: val_array, UseMult: use_mult, PostResult: true}
 	text, err := json.Marshal(bob)
 	if err != nil {
-                fmt.Printf("Json Marshall error in worker_net_send: %v\n", err)
-                return
-        }
+		fmt.Printf("Json Marshall error in worker_net_send: %v\n", err)
+		return
+	}
 
 	//////////
 	// Now send to an open connection
 	conn := <-ps.net_channels // Grab the connection for as little time as possible
-	full_msg :=  string(text)+"\n"
+	full_msg := string(text) + "\n"
 	//fmt.Printf("Sending::%s", full_msg)
 	//n, err:= fmt.Fprintf(conn, full_msg)
 	n, err := conn.Write([]byte(full_msg))
@@ -124,35 +133,35 @@ func (ps *perm_struct) worker_net_send (it NumCol, fv *NumMap) {
 		return
 	}
 	if len(full_msg) != n {
-		fmt.Printf("Send Error, Length is %d, sent %d\n", n,len(full_msg))
+		fmt.Printf("Send Error, Length is %d, sent %d\n", n, len(full_msg))
 		log.Fatal()
 	}
-        //////////
-        // listen for reply on open connection
-        message, err := bufio.NewReader(conn).ReadString('\n')
-        if err != nil {
-                fmt.Printf("Read String error: %v\n", err)
-                return
-        }
-        //fmt.Println("Received Message from server::")
+	//////////
+	// listen for reply on open connection
+	message, err := bufio.NewReader(conn).ReadString('\n')
+	if err != nil {
+		fmt.Printf("Read String error: %v\n", err)
+		return
+	}
+	//fmt.Println("Received Message from server::")
 
-        //////////
-        // Take the message text we've got back and interpret it
-	if len(message)>3 {
-        	fv.MergeJson(message)
+	//////////
+	// Take the message text we've got back and interpret it
+	if len(message) > 3 {
+		fv.MergeJson(message)
 	}
 
 	ps.net_channels <- conn
 	ps.channel_tokens <- true // Now we're done, add a token to allow another to start
 	ps.coallate_done <- true
 }
-func (ps *perm_struct) worker_net_close (fv *NumMap) {
-	bob := UmNetStruct{PostResult:false}
+func (ps *perm_struct) worker_net_close(fv *NumMap) {
+	bob := UmNetStruct{PostResult: false}
 	text, err := json.Marshal(bob)
 	if err != nil {
 		fmt.Printf("Json Marshall error in worker_net_close: %v\n", err)
-                return	// FIXME add error return
-        }
+		return // FIXME add error return
+	}
 	close(ps.net_channels)
 	var par_merge sync.WaitGroup
 	for conn := range ps.net_channels {
@@ -160,34 +169,33 @@ func (ps *perm_struct) worker_net_close (fv *NumMap) {
 		//fmt.Printf("Sending Request for end::" + string(text)+"\n")
 		fmt.Fprintf(conn, string(text)+"\n")
 		//////////
-       		// listen for reply on open connection
-       		message, err := bufio.NewReader(conn).ReadString('\n')
-       		if err != nil {
-       		         fmt.Printf("Read String error: %v\n", err)
-       		         return
-       		}
-       		//fmt.Println("Received Message from server::")
+		// listen for reply on open connection
+		message, err := bufio.NewReader(conn).ReadString('\n')
+		if err != nil {
+			fmt.Printf("Read String error: %v\n", err)
+			return
+		}
+		//fmt.Println("Received Message from server::")
 
-       		//////////
-       		// Take the message text we've got back and interpret it
+		//////////
+		// Take the message text we've got back and interpret it
 		par_merge.Add(1)
-		go func () {
-	       		fv.MergeJson(message)
+		go func() {
+			fv.MergeJson(message)
 			//err := fv.FastUnMarshalJson([]byte(message))
 			//if (err !=nil) {
 			//	fmt.Printf("Fast Unmarshall error %v\n", err)
 			//	return // FIXME
 			//}
 			par_merge.Done()
-		} ()
+		}()
 	}
 	for conn := range ps.net_channels {
 		// Fixme this can probably be spawned
-                conn.Close()
+		conn.Close()
 	}
 	par_merge.Wait()
 }
-
 
 func (pstrct *perm_struct) setup_conns(fv *NumMap) (extra_tokens int, all_fail bool) {
 	net_success := false
@@ -229,4 +237,56 @@ func (pstrct *perm_struct) setup_conns(fv *NumMap) (extra_tokens int, all_fail b
 		all_fail = true
 	}
 	return
+}
+
+// This little go function waits for all the procs to have a done channel and then closes the channel
+func (pstrct *perm_struct) done_control(permute_mode int, found_values *NumMap) {
+	for i := 0; i < pstrct.num_permutations; i++ {
+		<-pstrct.coallate_done
+	}
+	if permute_mode == NetMap {
+		// Send a message to all the channels to close them down
+		// and collect the results
+		//fmt.Println("all permutes finished, closing channels")
+		pstrct.worker_net_close(found_values)
+		//fmt.Println("Network close finished")
+	}
+	close(pstrct.coallate_chan)
+	close(pstrct.map_merge_chan)
+	pstrct.mwg.Done()
+}
+func (pstrct *perm_struct) Workers(permute_mode int, found_values *NumMap, proof_list chan SolLst) {
+	pstrct.mwg.Add(2)
+	if permute_mode == ParMap {
+		pstrct.mwg.Add(1)
+		go pstrct.merge_func_worker(found_values)
+	}
+
+	go pstrct.done_control(permute_mode, found_values)
+	go pstrct.output_merge(proof_list)
+
+}
+func (pstrct *perm_struct) output_merge(proof_list chan SolLst) {
+	for v := range pstrct.coallate_chan {
+		v.RemoveDuplicates()
+		proof_list <- v
+	}
+	close(proof_list)
+	pstrct.mwg.Done()
+}
+func (pstrct *perm_struct) merge_func_worker(found_values *NumMap) {
+	merge_report := false // Turn off reporting of new numbers for first run
+	for v := range pstrct.map_merge_chan {
+		found_values.Merge(v, merge_report)
+		merge_report = true
+	}
+	pstrct.mwg.Done()
+}
+func (pstrct *perm_struct) Wait() {
+	pstrct.mwg.Wait()
+}
+func (pstrct *perm_struct) NumWorkers(cnt int) {
+	for i := 0; i < 16; i++ {
+		pstrct.channel_tokens <- true
+	}
 }

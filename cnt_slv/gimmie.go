@@ -4,6 +4,10 @@ import (
 	"errors"
 )
 
+// A gimmie is an efficient way to work through the large sets of numbers
+// Rather than work out in advance everything we will need
+// This supplies the next workload unit when requested.
+// This is used to save memory
 type Gimmie struct {
 	sol_list SolLst
 	inner    int

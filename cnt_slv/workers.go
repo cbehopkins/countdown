@@ -4,12 +4,17 @@ import (
 	"fmt"
 	"log"
 	"runtime"
-	"sync"
 	//"github.com/fighterlyt/permutation"
 	"github.com/cbehopkins/permutation"
-	"github.com/tonnerre/golang-pretty"
 )
 
+// workers contains the worker functions
+// That is the functions that work on the lists to turn them into
+// number pairs to process
+// This means taking sets of numbers and permuting them to come up with
+// all possible combinations
+// and then taking these combinations and devolving them into smaller sets
+// that can be worked on in turn
 const (
 	LonMap = iota
 	ParMap
@@ -17,8 +22,8 @@ const (
 )
 
 func WorkN(array_in NumCol, found_values *NumMap) SolLst {
-	for _,j := range  array_in {
-		if j.Val ==0 {
+	for _, j := range array_in {
+		if j.Val == 0 {
 			log.Fatal("WorkN fed a 0 number")
 		}
 	}
@@ -56,59 +61,32 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 	// we then take each value in this list and work that to get {{9},{3}}
 	// the final list we want to return is {{5,4}, {1,4}, {9},{3}}
 	// the reason to not return {2,3,4} is so that in the grand scheme of things we can recurse these lists
-	var work_list []SolLst
-	work_list = expand_n(array_in)
+	var work_list WrkLst
+	work_list = NewWrkLst(array_in)
 	// so by this stage we have something like {{{2},{3,4}}} or for a 4 variable: { {{2}, {3,4,5}}, {{2,3},{4,5}} }
-	var work_unit SolLst
-	var top_src_to_make int
-	var top_numbers_to_make int
-	for _, work_unit = range work_list {
-		// Now we've extracted one work item,
-		// so conceptually  here we have {{2},{3,4,5,6}} or perhaps {{2},{3,4}} or {{2,3},{4,5}}
 
-		if found_values.SelfTest {
-			// Sanity check for programming errors
-			work_unit_length := work_unit.Len()
-			if work_unit_length != 2 {
-				pretty.Println(work_list)
-				log.Fatalf("Invalid work unit length, %d", work_unit_length)
-			}
+	cross_len := 0
+	num_numbers_to_make := 0
+
+	determineSizeFunc := func(a_num, b_num *Number) bool {
+		if a_num.Val <= 0 || b_num.Val <= 0 {
+			log.Fatalf("Gimmie gave %d, %d", a_num.Val, b_num.Val)
 		}
-		var unit_a, unit_b NumCol
-		unit_a = work_unit[0]
-		unit_b = work_unit[1]
-
-		var list_a SolLst
-		var list_b SolLst
-		list_a = work_n(unit_a, found_values) // return a list of everything that can be done with this set
-		list_b = work_n(unit_b, found_values)
-
-		// Now we want two list of numbers to cross against each other
-		gimmie_a := NewGimmie(list_a)
-		gimmie_b := NewGimmie(list_b)
-		// Now Cross work then
-		current_item := 0
-		cross_len := gimmie_a.Items() * gimmie_b.Items()
-		num_items_to_make := cross_len * 2
-		top_src_to_make += num_items_to_make
-
-		num_numbers_to_make := 0
-		for a_num, err_a := gimmie_a.Next(); err_a == nil; a_num, err_a = gimmie_a.Next() {
-			for b_num, err_b := gimmie_b.Next(); err_b == nil; b_num, err_b = gimmie_b.Next() {
-				if (a_num.Val<=0 || b_num.Val<= 0) {
-					log.Fatalf("Gimmie gave %d, %d", a_num.Val, b_num.Val)
-				}
-				tmp,
-					_, _, _, _, _ := found_values.do_maths([]*Number{a_num, b_num})
-				num_numbers_to_make += tmp
-				current_item = current_item + 2
-			}
-			gimmie_b.Reset()
-		}
-		top_numbers_to_make += num_numbers_to_make
-
+		tmp,
+			_, _, _, _, _ := found_values.do_maths([]*Number{a_num, b_num})
+		num_numbers_to_make += tmp
+		cross_len++
+		return true
 	}
+
+	work_list.procWork(found_values, determineSizeFunc)
+
+	top_src_to_make := cross_len * 2
+	top_numbers_to_make := num_numbers_to_make
 	//current_item = 0
+	var work_unit SolLst
+	// Last Item on work list contains sources
+	work_unit = work_list.Last()
 	// Malloc the memory once!
 	current_number_loc := 0
 	// This is the list of numbers that calculations are done from
@@ -117,76 +95,64 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 	// i.e. the list that calculations results end up in
 	num_list := found_values.aquire_numbers(top_numbers_to_make)
 	// And this allocates the list that will point to those (previously allocated) numbers
-	// uses top_src_to_make/2 as for each 2 items there is one solution
-	ret_list = make(SolLst, 0, ((top_src_to_make / 2) + work_unit.Len() + ret_list.Len()))
+
+	ret_list = make(SolLst, 0, (cross_len + len(work_unit)))
 	// Add on the work unit because that contains sub combinations that may be of use
 	ret_list = append(ret_list, work_unit...)
 	current_src := 0
-	for _, work_unit = range work_list {
-		unit_a := work_unit[0]
-		unit_b := work_unit[1]
-		list_a := work_n(unit_a, found_values)
-		list_b := work_n(unit_b, found_values)
-		gimmie_a := NewGimmie(list_a)
-		gimmie_b := NewGimmie(list_b)
+	workerFunc := func(a_num, b_num *Number) bool {
+		// Here we have unrolled the functionality of make_2_to_1
+		// So that it can use a single array
+		// This is all to put less work on the malloc and gc
+		found_values.const_lk.RLock()
+		if found_values.Solved {
+			found_values.const_lk.RUnlock()
+			return false
+		}
+		found_values.const_lk.RUnlock()
+		// We have to re-caclulate
 
-		for a_num, err_a := gimmie_a.Next(); err_a == nil; a_num, err_a = gimmie_a.Next() {
-			for b_num, err_b := gimmie_b.Next(); err_b == nil; b_num, err_b = gimmie_b.Next() {
-				// Here we have unrolled the functionality of make_2_to_1
-				// So that it can use a single array
-				// This is all to put less work on the malloc and gc
-				found_values.const_lk.RLock()
-				if found_values.Solved {
-					found_values.const_lk.RUnlock()
-					return ret_list
-				}
-				found_values.const_lk.RUnlock()
-				// We have to re-caclulate
+		src_list[current_src] = a_num
+		src_list[current_src+1] = b_num
+		// Shorthand to make code more readable
+		bob_list := src_list[current_src : current_src+2]
+		if a_num.Val == 0 || b_num.Val == 0 {
+			log.Fatalf("Gimmie gave %d, %d", a_num.Val, b_num.Val)
+		}
 
-				src_list[current_src] = a_num
-				src_list[current_src+1] = b_num
-				// Shorthand to make code more readable
-				bob_list := src_list[current_src : current_src+2]
-				if (a_num.Val==0 || b_num.Val== 0) {
-					log.Fatalf("Gimmie gave %d, %d", a_num.Val, b_num.Val)
-				}
+		num_to_make,
+			add_set, mul_set, sub_set, div_set,
+			a_gt_b := found_values.do_maths(bob_list)
 
-				num_to_make,
-					add_set, mul_set, sub_set, div_set,
-					a_gt_b := found_values.do_maths(bob_list)
+		// Shorthand
+		tmp_list := num_list[current_number_loc:(current_number_loc + num_to_make)]
 
-				// Shorthand
-				tmp_list := num_list[current_number_loc:(current_number_loc + num_to_make)]
-
-				// Populate the part of the return list for this run
-				// This is the arra AddItems will write into
-				found_values.AddItems(bob_list, num_list, current_number_loc,
-					add_set, mul_set, sub_set, div_set,
-					a_gt_b)
-				current_number_loc += num_to_make
-				current_src += 2
-				if found_values.SelfTest {
-					for _, v := range tmp_list {
-						v.ProveSol()
-					}
-				}
-				ret_list = append(ret_list, tmp_list)
+		// Populate the part of the return list for this run
+		// This is the arra AddItems will write into
+		found_values.AddItems(bob_list, num_list, current_number_loc,
+			add_set, mul_set, sub_set, div_set,
+			a_gt_b)
+		current_number_loc += num_to_make
+		current_src += 2
+		if found_values.SelfTest {
+			for _, v := range tmp_list {
+				v.ProveSol()
 			}
 		}
-
-		if false {
-			ret_list.TidySolLst()
-		}
+		ret_list = append(ret_list, tmp_list)
+		return true
 	}
+
+	work_list.procWork(found_values, workerFunc)
 	// Add the entire solution list found in the previous loop in one go
 	found_values.AddSol(ret_list, false)
-	//for _,j := range item.Numbers() {
-	//        j.ProveSol()
-	//        j.SetDifficulty()
-	//}
 	return ret_list
 }
-
+func permuteN(array_in NumCol, found_values *NumMap) (proof_list chan SolLst) {
+	return_proofs := make(chan SolLst, 16)
+	go PermuteN(array_in, found_values, return_proofs)
+	return return_proofs
+}
 func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 	// If your number of workers is limited by access to the centralmap
 	// Then we have the ability to use several number maps and then merge them
@@ -215,15 +181,9 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 		fmt.Println(err)
 	}
 
-	num_permutations := p.Left()
-	fmt.Println("Num permutes:", num_permutations)
+	pstrct := new_perm_struct(p, permute_mode == NetMap)
+	pstrct.NumWorkers(16)
 
-	pstrct := new_perm_struct(permute_mode == NetMap)
-
-	for i := 0; i < 16; i++ {
-		//fmt.Println("Adding token");
-		pstrct.channel_tokens <- true
-	}
 	if permute_mode == NetMap {
 		extra_tokens, all_fail := pstrct.setup_conns(found_values)
 		required_tokens += extra_tokens
@@ -260,83 +220,9 @@ func PermuteN(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 		}
 	}
 	go caller()
-	merge_report := false // Turn off reporting of new numbers for first run
-	mwg := new(sync.WaitGroup)
-	mwg.Add(2)
-	merge_func_worker := func() {
-		for v := range pstrct.map_merge_chan {
-			found_values.Merge(v, merge_report)
-			merge_report = true
-		}
-		mwg.Done()
-	}
-	if permute_mode == ParMap {
-		mwg.Add(1)
-		go merge_func_worker()
-	}
-	// This little go function waits for all the procs to have a done channel and then closes the channel
-	done_control := func() {
-		for i := 0; i < num_permutations; i++ {
-			<-pstrct.coallate_done
-		}
-		if permute_mode == NetMap {
-			// Send a message to all the channels to close them down
-			// and collect the results
-			fmt.Println("all permutes finished, closing channels")
-			pstrct.worker_net_close(found_values)
-			fmt.Println("Network close finished")
-		}
-		close(pstrct.coallate_chan)
-		close(pstrct.map_merge_chan)
-		mwg.Done()
-	}
-	go done_control()
 
-	output_merge := func() {
-		for v := range pstrct.coallate_chan {
-			v.RemoveDuplicates()
-			//fmt.Println("Send Proof")
-			proof_list <- v
-		}
-		close(proof_list)
-		mwg.Done()
-	}
-	go output_merge()
-	mwg.Wait()
+	pstrct.Workers(permute_mode, found_values, proof_list)
+
+	pstrct.Wait()
 	found_values.LastNumMap()
-}
-
-func expand_n(array_a NumCol) []SolLst {
-	var work_list []SolLst
-	// Easier to explain by example:
-	// {2,3,4} -> {{2},{3,4}}
-	// {2,3,4,5} -> {{2}, {3,4,5}}
-	//           -> {{2,3},{4,5}}
-	// {2,3,4,5,6} -> {{2},{3,4,5,6}}
-	//             -> {{2,3},{4,5,6}}
-	//             -> {{2,3,4},{5,6}}
-
-	// The consumer of this list of list (of list) will then feed each list length >1 into a the work+_n function
-	// In order to get down to a {{a},{b}} which can then be worked
-	// The important point is that even though the list we return may be indefinitly long
-	// each work unit within it is then a smaller unit
-	// so an input array of 3 numbers only generates work units that contain number lists of length 2 or less
-
-	len_array_m1 := array_a.Len() - 1
-
-	for i := 0; i < (len_array_m1); i++ {
-		var ar_a, ar_b NumCol
-		// for 3 items in arrar
-		// {0},{1,2}, {0,1}{2}
-		ar_a = make(NumCol, i+1)
-		copy(ar_a, array_a[0:i+1])
-		ar_b = make(NumCol, (array_a.Len() - (i + 1)))
-
-		copy(ar_b, array_a[(i+1):(array_a.Len())])
-		var work_item SolLst // {{2},{3,4}};
-		// a work item always contains 2 elements to the array
-		work_item = append(work_item, ar_a, ar_b)
-		work_list = append(work_list, work_item)
-	}
-	return work_list
 }

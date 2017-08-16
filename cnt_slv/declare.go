@@ -1,17 +1,41 @@
 package cnt_slv
 
 import (
-//	"fmt"
+	//	"fmt"
 	"sort"
 	"strconv"
 )
 
+// declare.go is responsible for declaring the interesting structures
+// That is the NumCol and SolLst
+// the types that contain our Sets of candidates and lists of possible solutions
 // So NumCol is a collection of numbers
 // This says that (for a given inout) you can have all of these numbers
 // at the same time
 // A solution List is a number of things you do with a set of numbers
 type NumCol []*Number
 type SolLst []NumCol
+
+func (found_values *NumMap) CountHelper(target int, sources []int) chan SolLst {
+
+	// Create a list of the input sources
+	srcNumbers := found_values.NewNumCol(sources)
+	found_values.SetTarget(target)
+
+	return permuteN(srcNumbers, found_values)
+}
+
+func (found_values *NumMap) NewNumCol(input []int) NumCol {
+	var list NumCol
+	var empty_list NumCol
+
+	for _, v := range input {
+		a := NewNumber(v, empty_list, "I", 0)
+		found_values.Add(v, a)
+		list = append(list, a)
+	}
+	return list
+}
 
 // This function is used to add the initial numbers
 func (bob *NumCol) AddNum(input_num int, found_values *NumMap) {
@@ -24,7 +48,10 @@ func (bob *NumCol) AddNum(input_num int, found_values *NumMap) {
 }
 
 func (item *SolLst) RemoveDuplicates() {
-	//return
+	// The purpose of this is to go through the supplied list
+	// and modify the list to only include unique sets
+	// any sets that produce the same string are considered identical
+	// that is the collection contains the same values
 	sol_map := make(map[string]NumCol)
 	var del_queue []int
 	for i := 0; i < len(*item); i++ {
@@ -58,7 +85,7 @@ func (item *SolLst) RemoveDuplicates() {
 }
 func (item NumCol) TidyNumCol() {
 	for _, v := range item {
-		v.ProveSol()
+		//v.ProveSol()
 		v.TidyDoubles()
 		v.TidyOperators()
 		v.ProveSol() // Just in case the Tidy functions have got things wrong
@@ -90,24 +117,69 @@ func (item NumCol) String() string {
 }
 func (proof_list SolLst) String() string {
 	var ret_val string
+	if len(proof_list) > 0 {
+		for _, v := range proof_list {
+			// v is *NumCol
+			for _, w := range v {
+				// w is *Number
+				var Value int
+				Value = w.Val
+
+				//ret_val = ret_val + fmt.Sprintf("Value %3d, = ", Value) + w.String() + "\n"
+				ret_val = ret_val + "Value " + strconv.Itoa(Value) + ", = " + w.String() + "\n"
+			}
+		}
+		ret_val = ret_val + "Done printing proofs\n"
+	} else {
+		ret_val = "No proofs found"
+	}
+	return ret_val
+}
+func (proof_list SolLst) StringNum(val int) string {
+	var ret_val string
 	for _, v := range proof_list {
-		// v is *NumCol
 		for _, w := range v {
 			// w is *Number
 			var Value int
 			Value = w.Val
-
-			//ret_val = ret_val + fmt.Sprintf("Value %3d, = ", Value) + w.String() + "\n"
-			ret_val = ret_val + "Value "+ strconv.Itoa(Value) + ", = " + w.String() + "\n"
+			if Value == val {
+				ret_val = ret_val + "Value " + strconv.Itoa(Value) + ", = " + w.String() + "\n"
+			}
 		}
 	}
-	ret_val = ret_val + "Done printing proofs\n"
 	return ret_val
+}
+func (proof_list SolLst) Exists(val int) bool {
+
+	for _, v := range proof_list {
+		for _, w := range v {
+			// w is *Number
+			var Value int
+			Value = w.Val
+			if Value == val {
+				return true
+			}
+		}
+	}
+	return false
 }
 func (bob NumCol) Len() int {
 	var array_len int
 	array_len = len(bob)
 	return array_len
+}
+func (i0 NumCol) Equal(i1 NumCol) bool {
+	if len(i0) != len(i1) {
+		return false
+	}
+	for i, _ := range i0 {
+		i0Val := i0[i].Val
+		i1Val := i1[i].Val
+		if i0Val != i1Val {
+			return false
+		}
+	}
+	return true
 }
 func (bob SolLst) Len() int {
 	return len(bob)

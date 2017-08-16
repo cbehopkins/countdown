@@ -4,10 +4,14 @@ import (
 	"fmt"
 	//	"log"
 	"sync"
-
 	//"github.com/tonnerre/golang-pretty"
 )
 
+// nummap.go is our top level map of all the numbers we have generated
+// every time a new number is generated, this is told about it
+// It's also used for our top level config as it gets sent everywhere
+// There are also a bunch of helper functions surrpunding the map here
+// to efficiently and concisely extract the needed data
 type NumMapAtom struct {
 	a      int
 	b      *Number
@@ -26,11 +30,11 @@ type NumMap struct {
 
 	NumPool_2 sync.Pool
 
-	const_lk  sync.RWMutex
-	Solved    bool
-	SeekShort bool
-	UseMult   bool
-	SelfTest  bool
+	const_lk    sync.RWMutex
+	Solved      bool
+	SeekShort   bool
+	UseMult     bool
+	SelfTest    bool
 	PermuteMode int
 }
 
@@ -146,8 +150,8 @@ func (item *NumMap) AddSol(a SolLst, report bool) {
 }
 func (item *NumMap) Merge(a *NumMap, report bool) {
 	a.map_lock.Lock()
-	tmp_col := make(NumCol, len(a.nmp)) 
-	i:=0
+	tmp_col := make(NumCol, len(a.nmp))
+	i := 0
 	for _, v := range a.nmp {
 		tmp_col[i] = v
 		i++
@@ -235,7 +239,7 @@ func (item *NumMap) LastNumMap() {
 	<-item.done_channel
 }
 func (item *NumMap) SetTarget(target int) {
-	fmt.Println("Setting target to ", target)
+	//fmt.Println("Setting target to ", target)
 	item.const_lk.Lock()
 	item.TargetSet = true
 	item.Target = target
@@ -259,11 +263,19 @@ func (item *NumMap) PrintProofs() {
 	}
 	for i := min_num; i <= max_num; i++ {
 		Value, ok := item.nmp[i]
-		if ok {
+		if ok && (i < 1000) {
 			proof_string := Value.String()
 			fmt.Printf("Value %d, = %s, difficulty = %d\n", Value.Val, proof_string, Value.difficulty)
 		}
 	}
 	fmt.Printf("There are:\n%d Numbers\nMin:%4d Max:%4d\n", num_num, min_num, max_num)
-	item.MarshalJson()
+	//item.MarshalJson()
+}
+func (item *NumMap) GetProof(target int) string {
+	val, ok := item.nmp[target]
+	if ok {
+		return val.String()
+	} else {
+		return "No Proof Found"
+	}
 }

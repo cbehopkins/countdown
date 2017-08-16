@@ -2,16 +2,19 @@ package cnt_slv
 
 import (
 	"fmt"
+	"github.com/tonnerre/golang-pretty"
 	"log"
 	"strconv"
-	"github.com/tonnerre/golang-pretty"
 )
 
+// number.go contains the basics of manipulating our number type
+// A number says where it comes from and effectively says how
+// one can make it
 type Number struct {
 	// A number consists of
 	Val        int       `json:"val"` // a value
 	list       []*Number // a pointer the the list of numbers used to obtain this
-	operation  string     // The operation used on those numbers to get here
+	operation  string    // The operation used on those numbers to get here
 	difficulty int
 }
 
@@ -237,20 +240,24 @@ func (i *Number) ProveSol() int {
 		return running_total
 	}
 }
-func (i *Number) SetDifficulty () int {
+func (i *Number) SetDifficulty() int {
 	if (i.list == nil) || (len(i.list) == 0) {
 		i.difficulty = 0
 		return 0
 	}
 	switch i.operation {
-		case "+" : i.difficulty = 1
-		case "-","--": i.difficulty = 1
-		case "*": i.difficulty = 2
-		case "/","\\":i.difficulty = 3
-		default:
-                	log.Fatal("Unknown operation type")
+	case "+":
+		i.difficulty = 1
+	case "-", "--":
+		i.difficulty = 1
+	case "*":
+		i.difficulty = 2
+	case "/", "\\":
+		i.difficulty = 3
+	default:
+		log.Fatal("Unknown operation type")
 	}
-	for _,v := range i.list {
+	for _, v := range i.list {
 		i.difficulty += v.SetDifficulty()
 	}
 	return i.difficulty

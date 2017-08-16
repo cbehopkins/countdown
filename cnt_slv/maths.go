@@ -1,10 +1,14 @@
 package cnt_slv
 
 import (
-	"log"
 	"fmt"
 	"github.com/tonnerre/golang-pretty"
+	"log"
 )
+
+// maths.go contains the functions that actually do the maths on a pair of numbers
+// Trivial I know, but we put effort into doing this minimising load on the rest of the
+// system
 
 func (found_values *NumMap) do_maths(list []*Number) (num_to_make int,
 	add_set, mul_set, sub_set, div_set, a_gt_b bool) {
@@ -30,8 +34,8 @@ func (found_values *NumMap) do_maths(list []*Number) (num_to_make int,
 	mul_set = found_values.UseMult
 	num_to_make = 1
 	if mul_set {
-		if ((a*b)>0) {
- 			num_to_make = 2
+		if (a * b) > 0 {
+			num_to_make = 2
 		} else {
 			mul_set = false
 		}
@@ -67,7 +71,7 @@ func (found_values *NumMap) AddItems(list []*Number, ret_list []*Number, current
 	add_set, mul_set, sub_set, div_set, a_gt_b bool) {
 	a := list[0].Val
 	b := list[1].Val
-	saved_current_number_loc:=current_number_loc
+	saved_current_number_loc := current_number_loc
 	if add_set {
 		ret_list[current_number_loc].configure(a+b, list, "+", 1)
 		current_number_loc++
@@ -93,13 +97,13 @@ func (found_values *NumMap) AddItems(list []*Number, ret_list []*Number, current
 		}
 		current_number_loc++
 	}
-	for i:=saved_current_number_loc; i<current_number_loc;i++ {
+	for i := saved_current_number_loc; i < current_number_loc; i++ {
 		v := ret_list[i]
 		if v.Val <= 0 {
 			pretty.Println(v)
-			fmt.Printf("value %d is %d, %d, %d\n", i,v.Val,a,b)
-			fmt.Printf("add_set=%t, mul_set=%t, sub_set=%t, div_set=%t, a_gt_b=%t\n",add_set, mul_set, sub_set, div_set, a_gt_b)
-			for j:=saved_current_number_loc; j<current_number_loc; j++ {
+			fmt.Printf("value %d is %d, %d, %d\n", i, v.Val, a, b)
+			fmt.Printf("add_set=%t, mul_set=%t, sub_set=%t, div_set=%t, a_gt_b=%t\n", add_set, mul_set, sub_set, div_set, a_gt_b)
+			for j := saved_current_number_loc; j < current_number_loc; j++ {
 				fmt.Printf("Val: %d\n", ret_list[j].Val)
 			}
 			log.Fatal("result <0")

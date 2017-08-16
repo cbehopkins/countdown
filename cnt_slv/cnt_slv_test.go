@@ -2,21 +2,15 @@ package cnt_slv
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
+	"os"
 	"runtime"
+	"runtime/pprof"
 	"sync"
 	"testing"
-	"os"
-	"runtime/pprof"
-	"log"
+	"time"
 )
-
-//func TestSelf(t *testing.T) {
-//	test_self()
-//}
-func TestThis(t *testing.T) {
-	fmt.Printf("Test")
-}
 
 type testset struct {
 	Selected []int
@@ -33,7 +27,7 @@ func NewTestSet(target int, seld ...int) *testset {
 	return item
 }
 func init_many() []testset {
-	ret_lst := make([]testset, 8)
+	ret_lst := make([]testset, 9)
 	ret_lst[0] = *NewTestSet(833, 50, 3, 3, 1, 10, 7)
 	ret_lst[1] = *NewTestSet(78, 8, 9, 10, 75, 25, 100)
 	ret_lst[2] = *NewTestSet(540, 4, 5, 7, 2, 4, 8)
@@ -42,7 +36,10 @@ func init_many() []testset {
 	ret_lst[5] = *NewTestSet(406, 25, 50, 10, 7, 5, 1)
 	ret_lst[6] = *NewTestSet(269, 100, 10, 8, 9, 7, 7)
 	ret_lst[7] = *NewTestSet(277, 75, 10, 6, 3, 5, 4)
-
+	// (9-1)*50 = 400
+	// (100 + 9*3) = 327
+	// (400+327)= 727
+	ret_lst[8] = *NewTestSet(727, 50, 100, 9, 1, 9, 3)
 	return ret_lst
 }
 
@@ -65,14 +62,12 @@ func TestOne(t *testing.T) {
 	bob.AddNum(25, found_values)
 	bob.AddNum(100, found_values)
 
-	return_proofs := make(chan SolLst, 16)
-
 	found_values.SetTarget(target)
 
 	proof_list = append(proof_list, bob) // Add on the work item that is the source
 
 	fmt.Println("Starting permute")
-	go PermuteN(bob, found_values, return_proofs)
+	return_proofs := permuteN(bob, found_values)
 	cleanup_packer := 0
 	for v := range return_proofs {
 		//fmt.Println("Proof Received")
@@ -96,12 +91,12 @@ func TestOne(t *testing.T) {
 		found_values.PrintProofs()
 		t.Fail()
 	}
-	proof_list = SolLst{} 
+	proof_list = SolLst{}
 	found_values = &NumMap{}
 	bob = NumCol{}
 }
-func TestMany(t *testing.T) {
 
+func TestMany(t *testing.T) {
 
 	test_set := init_many()
 	for _, item := range test_set {
@@ -110,8 +105,8 @@ func TestMany(t *testing.T) {
 		found_values := NewNumMap(&proof_list) //pass it the proof list so it can auto-check for validity at the end
 		found_values.SelfTest = true
 		found_values.UseMult = true
-		found_values.PermuteMode = rand.Intn(3)	// Select a random mode
-		return_proofs := make(chan SolLst, 16)
+		found_values.PermuteMode = rand.Intn(3) // Select a random mode
+
 		for _, itm := range item.Selected {
 			bob.AddNum(itm, found_values)
 		}
@@ -119,7 +114,7 @@ func TestMany(t *testing.T) {
 		proof_list = append(proof_list, bob) // Add on the work item that is the source
 
 		fmt.Println("Starting permute")
-		go PermuteN(bob, found_values, return_proofs)
+		return_proofs := permuteN(bob, found_values)
 
 		cleanup_packer := 0
 		for v := range return_proofs {
@@ -143,24 +138,19 @@ func TestMany(t *testing.T) {
 		}
 	}
 	if false {
-	f, err := os.Create("memprofile.prof")
-        if err != nil {
-            log.Fatal(err)
-        }
-        pprof.WriteHeapProfile(f)
-        f.Close()
+		f, err := os.Create("memprofile.prof")
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.WriteHeapProfile(f)
+		f.Close()
 	}
 }
 func init_fail_many() []testset {
-	ret_lst := make([]testset, 3)
-	ret_lst[0] = *NewTestSet(1000, 8, 9, 10)
-	ret_lst[1] = *NewTestSet(824, 3, 7, 6, 2, 1, 7)
-	ret_lst[2] = *NewTestSet(974, 1, 2, 2, 3, 3, 7)
-	//ret_lst[3] = *NewTestSet(952, 25, 50, 75,100,  3,  6)
-	//ret_lst[4] = *NewTestSet(559, 75, 10,  5,  6,  1,  3)
-	//ret_lst[5] = *NewTestSet(406, 25, 50, 10,  7,  5,  1)
-	//ret_lst[6] = *NewTestSet(269,100, 10,  8,  9,  7,  7)
-	//ret_lst[7] = *NewTestSet(277, 75, 10,  6,  3,  5,  4)
+	ret_lst := make([]testset, 0, 7)
+	ret_lst = append(ret_lst, *NewTestSet(1000, 8, 9, 10))
+	ret_lst = append(ret_lst, *NewTestSet(824, 3, 7, 6, 2, 1, 7))
+	ret_lst = append(ret_lst, *NewTestSet(974, 1, 2, 2, 3, 3, 7))
 	return ret_lst
 }
 
@@ -172,7 +162,7 @@ func TestFail(t *testing.T) {
 		found_values := NewNumMap(&proof_list) //pass it the proof list so it can auto-check for validity at the end
 		found_values.SelfTest = true
 		found_values.UseMult = true
-		return_proofs := make(chan SolLst, 16)
+
 		for _, itm := range item.Selected {
 			bob.AddNum(itm, found_values)
 		}
@@ -180,7 +170,7 @@ func TestFail(t *testing.T) {
 		proof_list = append(proof_list, bob) // Add on the work item that is the source
 
 		fmt.Println("Starting permute")
-		go PermuteN(bob, found_values, return_proofs)
+		return_proofs := permuteN(bob, found_values)
 
 		cleanup_packer := 0
 		for v := range return_proofs {
@@ -197,12 +187,18 @@ func TestFail(t *testing.T) {
 
 		if found_values.Solved {
 			t.Log("We found an impossible proof")
-			t.Log(proof_list)
+			//t.Log(proof_list)
 			t.Fail()
 		} else {
 			t.Log("Failed Correctly")
 		}
+		found_values = nil
+		bob = nil
+		return_proofs = nil
+		proof_list = nil
+		runtime.GC()
 	}
+	time.Sleep(time.Second * 10)
 }
 func TestIt(t *testing.T) {
 	//var target int
@@ -222,14 +218,12 @@ func TestIt(t *testing.T) {
 	bob.AddNum(25, found_values)
 	//bob.AddNum(100, found_values)
 
-	return_proofs := make(chan SolLst, 16)
-
 	//found_values.SetTarget(target)
 
 	proof_list = append(proof_list, bob) // Add on the work item that is the source
 
 	fmt.Println("Starting permute")
-	go PermuteN(bob, found_values, return_proofs)
+	return_proofs := permuteN(bob, found_values)
 	cleanup_packer := 0
 	for v := range return_proofs {
 		if found_values.SelfTest {
@@ -269,13 +263,11 @@ func TestReduction(t *testing.T) {
 	//bob1.AddNum(25, found_values1)
 	bob1.AddNum(100, found_values1)
 
-	return_proofs0 := make(chan SolLst, 16)
-	return_proofs1 := make(chan SolLst, 16)
 	proof_list0 = append(proof_list0, bob0) // Add on the work item that is the source
 	proof_list1 = append(proof_list1, bob1) // Add on the work item that is the source
 
 	fmt.Println("Starting permute")
-	go PermuteN(bob0, found_values0, return_proofs0)
+	return_proofs0 := permuteN(bob0, found_values0)
 	mwg := new(sync.WaitGroup)
 	mwg.Add(2)
 	go func() {
@@ -284,7 +276,7 @@ func TestReduction(t *testing.T) {
 		}
 		mwg.Done()
 	}()
-	go PermuteN(bob1, found_values1, return_proofs1)
+	return_proofs1 := permuteN(bob1, found_values1)
 	go func() {
 		for v := range return_proofs1 {
 			proof_list1 = append(proof_list1, v...)
