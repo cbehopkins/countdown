@@ -81,7 +81,7 @@ func TestOne(t *testing.T) {
 			}
 		}
 	}
-	if found_values.Solved {
+	if found_values.Solved() {
 		t.Log("Proof Found")
 
 	} else {
@@ -127,7 +127,7 @@ func TestMany(t *testing.T) {
 				}
 			}
 		}
-		if found_values.Solved {
+		if found_values.Solved() {
 			t.Log("Proof Found")
 
 		} else {
@@ -184,7 +184,7 @@ func TestFail(t *testing.T) {
 			}
 		}
 
-		if found_values.Solved {
+		if found_values.Solved() {
 			t.Log("We found an impossible proof")
 			//t.Log(proof_list)
 			t.Fail()
@@ -312,18 +312,21 @@ func BenchmarkWorkn(b *testing.B) {
 		found_values.SelfTest = true
 		found_values.UseMult = true
 		var bob NumCol
-		nu_map := make(map[int]int)
+		nu_map := make(map[int]struct{})
 		for j := 0; j < 6; j++ {
 			run := true
 			var k int
 			for run {
 				k = rand.Intn(100)
-				_, run = nu_map[k] // If it exists generate anther
+				if k > 0 {
+					_, run = nu_map[k] // If it exists generate anther
+					nu_map[k] = struct{}{}
+				}
 			}
 			bob.AddNum(k, found_values)
 		}
-
-		//found_values.SetTarget(target)
+		target := rand.Intn(1000)
+		found_values.SetTarget(target)
 		runtime.GC()
 		fmt.Println("Starting work_n")
 		b.StartTimer()

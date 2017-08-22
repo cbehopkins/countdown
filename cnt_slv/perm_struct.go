@@ -64,9 +64,8 @@ func (ps *perm_struct) worker_par(it NumCol, fv *NumMap) {
 
 	//////////
 	// Check if already solved
-	fv.const_lk.RLock()
-	if fv.Solved {
-		fv.const_lk.RUnlock()
+
+	if fv.Solved() {
 		ps.coallate_done <- true
 		ps.channel_tokens <- true
 		return
@@ -76,6 +75,7 @@ func (ps *perm_struct) worker_par(it NumCol, fv *NumMap) {
 	// Create the data structures needed to run this set of numbers
 	var arthur *NumMap
 	arthur = NewNumMap() //pass it the proof list so it can auto-check for validity at the en
+	fv.const_lk.RLock()
 	arthur.UseMult = fv.UseMult
 	arthur.SelfTest = fv.SelfTest
 	arthur.SeekShort = fv.SeekShort
@@ -94,14 +94,11 @@ func (ps *perm_struct) worker_par(it NumCol, fv *NumMap) {
 	ps.coallate_done <- true
 }
 func (ps *perm_struct) worker_lone(it NumCol, fv *NumMap) {
-	fv.const_lk.RLock()
-	if fv.Solved {
-		fv.const_lk.RUnlock()
+	if fv.Solved() {
 		ps.coallate_done <- true
 		ps.channel_tokens <- true
 		return
 	}
-	fv.const_lk.RUnlock()
 	ps.coallate_chan <- work_n(it, fv)
 	ps.coallate_done <- true
 	ps.channel_tokens <- true // Now we're done, add a token to allow another to start
@@ -110,13 +107,13 @@ func (ps *perm_struct) worker_lone(it NumCol, fv *NumMap) {
 func (ps *perm_struct) worker_net_send(it NumCol, fv *NumMap) {
 	fv.const_lk.RLock()
 	use_mult := fv.UseMult
-	if fv.Solved {
-		fv.const_lk.RUnlock()
+	fv.const_lk.RUnlock()
+	if fv.Solved() {
 		ps.coallate_done <- true
 		ps.channel_tokens <- true
 		return
 	}
-	fv.const_lk.RUnlock()
+
 	val_array := make([]int, len(it))
 	for i, j := range it {
 		val_array[i] = j.Val
@@ -267,7 +264,7 @@ func (pstrct *perm_struct) done_control() {
 	pstrct.mwg.Done()
 }
 func (pstrct *perm_struct) Workers(proof_list chan SolLst) {
-	// Launch tjhe thing what will actually do the work
+	// Launch the thing what will actually do the work
 	go pstrct.Work()
 	pstrct.mwg.Add(2)
 	if pstrct.permute_mode == ParMap {

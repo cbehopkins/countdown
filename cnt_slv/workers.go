@@ -29,12 +29,9 @@ func WorkN(array_in NumCol, found_values *NumMap) SolLst {
 func work_n(array_in NumCol, found_values *NumMap) SolLst {
 	var ret_list SolLst
 	len_array_in := array_in.Len()
-	found_values.const_lk.RLock()
-	if found_values.Solved {
-		found_values.const_lk.RLock()
+	if found_values.Solved() {
 		return ret_list
 	}
-	found_values.const_lk.RUnlock()
 	if len_array_in == 1 {
 		//ret_list = append(ret_list, &array_in)
 		return SolLst{array_in}
@@ -100,12 +97,12 @@ func work_n(array_in NumCol, found_values *NumMap) SolLst {
 		// Here we have unrolled the functionality of make_2_to_1
 		// So that it can use a single array
 		// This is all to put less work on the malloc and gc
-		found_values.const_lk.RLock()
-		if found_values.Solved {
-			found_values.const_lk.RUnlock()
+
+		if found_values.Solved() {
+
 			return false
 		}
-		found_values.const_lk.RUnlock()
+
 		// We have to re-caclulate
 
 		src_list[current_src] = a_num

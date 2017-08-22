@@ -8,7 +8,7 @@ import (
 func check_return_list(proof_list SolLst, found_values *NumMap) {
 	value_check := make(map[int]int)
 	found_values.const_lk.RLock()
-	if found_values.TargetSet && !found_values.SeekShort && found_values.Solved {
+	if found_values.TargetSet && !found_values.SeekShort && *found_values.solved {
 		found_values.const_lk.RUnlock()
 		// When we've aborted early because we found the proof
 		// the proof list is incomplete

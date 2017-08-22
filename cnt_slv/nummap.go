@@ -2,9 +2,7 @@ package cnt_slv
 
 import (
 	"fmt"
-	//	"log"
 	"sync"
-	//"github.com/tonnerre/golang-pretty"
 )
 
 // nummap.go is our top level map of all the numbers we have generated
@@ -31,7 +29,7 @@ type NumMap struct {
 	NumPool_2 sync.Pool
 
 	const_lk    sync.RWMutex
-	Solved      bool
+	solved      *bool
 	SeekShort   bool
 	UseMult     bool
 	SelfTest    bool
@@ -41,6 +39,7 @@ type NumMap struct {
 func NewNumMap() *NumMap {
 	p := new(NumMap)
 	p.nmp = make(map[int]*Number)
+	p.solved = new(bool)
 	p.input_channel = make(chan NumMapAtom, 1000)
 	p.input_channel_array = make(chan []NumMapAtom, 100)
 	p.done_channel = make(chan bool)
@@ -57,6 +56,11 @@ func NewNumMap() *NumMap {
 	}
 
 	return p
+}
+func (nmp *NumMap) Solved() bool {
+	nmp.const_lk.RLock()
+	defer nmp.const_lk.RUnlock()
+	return *nmp.solved
 }
 func (nmp *NumMap) Keys() []int {
 	ret_list := make([]int, len(nmp.nmp))
@@ -159,12 +163,6 @@ func (item *NumMap) Merge(a *NumMap, report bool) {
 	a.map_lock.Unlock()
 	tmp_sol := SolLst{tmp_col}
 	item.AddSol(tmp_sol, report)
-	//	var atomic NumMapAtom
-	//	atomic.a = i
-	//	atomic.b = v
-	//	atomic.report = report
-	//	item.input_channel <- atomic
-	//}
 }
 
 func (item *NumMap) add_item(value int, stct *Number, report bool) {
@@ -177,14 +175,15 @@ func (item *NumMap) add_item(value int, stct *Number, report bool) {
 
 				proof_string := stct.String()
 				fmt.Printf("Value %d, = %s, Proof Len is %d, Difficulty is %d\n", value, proof_string, stct.ProofLen(), stct.difficulty)
-				//stct.MarshalJson()
+				// Seeking the shortest, means run every combination we can
 				if !item.SeekShort {
 					item.const_lk.RUnlock()
 					item.const_lk.Lock()
-					item.Solved = true
+					*item.solved = true
 					item.const_lk.Unlock()
 					item.const_lk.RLock()
 				}
+				fmt.Println("Set Solved sucessfully")
 			}
 		}
 	} else if item.SeekShort && (retr.difficulty > stct.difficulty) {
@@ -269,7 +268,6 @@ func (item *NumMap) PrintProofs() {
 		}
 	}
 	fmt.Printf("There are:\n%d Numbers\nMin:%4d Max:%4d\n", num_num, min_num, max_num)
-	//item.MarshalJson()
 }
 func (item *NumMap) GetProof(target int) string {
 	val, ok := item.nmp[target]
