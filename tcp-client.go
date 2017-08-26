@@ -24,10 +24,10 @@ func main() {
 	for {
 		// read in input from stdin
 		reader := bufio.NewReader(os.Stdin)
-		waiting_input := true
-		val_array := make([]int, 0, 6)
+		waitingInput := true
+		valArray := make([]int, 0, 6)
 		cnt := 0
-		for waiting_input {
+		for waitingInput {
 			fmt.Print("Enter a Number:")
 			text, err := reader.ReadString('\n')
 			if err != nil {
@@ -36,7 +36,7 @@ func main() {
 			}
 			if text == "\n" {
 				fmt.Println("Blank input, Done")
-				waiting_input = false
+				waitingInput = false
 			} else {
 				var i int
 				_, erri := fmt.Sscanf(text, "%d\n", &i)
@@ -44,10 +44,10 @@ func main() {
 					fmt.Printf("Txt error: %v\n", erri)
 				} else {
 					fmt.Println("Adding Integer: ", i)
-					val_array = append(val_array, i)
+					valArray = append(valArray, i)
 					cnt++
 					if cnt == 6 {
-						waiting_input = false
+						waitingInput = false
 					}
 				}
 			}
@@ -55,7 +55,7 @@ func main() {
 		//////////
 		// Take our array of numbers (val_array)
 		// and turnt hem into an json request ready to send to the network
-		bob := UmNetStruct{Val: val_array}
+		bob := UmNetStruct{Val: valArray}
 		text, err := json.Marshal(bob)
 
 		//////////
@@ -71,6 +71,6 @@ func main() {
 
 		//////////
 		// Take the message text we've got back and interpret it
-		cnt_slv.ImportJson(message) // Import prints the proofs for us - useful for test but not much else
+		cntSlv.ImportJson(message) // Import prints the proofs for us - useful for test but not much else
 	}
 }

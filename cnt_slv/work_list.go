@@ -1,4 +1,4 @@
-package cnt_slv
+package cntSlv
 
 import (
 	"log"
@@ -10,33 +10,33 @@ type WrkLst struct {
 	lst []SolLst
 }
 
-func (wl WrkLst) procWork(found_values *NumMap, wf func(a, b *Number) bool) {
+func (wl WrkLst) procWork(foundValues *NumMap, wf func(a, b *Number) bool) {
 	run := true
-	for _, work_unit := range wl.lst {
+	for _, workUnit := range wl.lst {
 		// Now we've extracted one work item,
 		// so conceptually  here we have {{2},{3,4,5,6}} or perhaps {{2},{3,4}} or {{2,3},{4,5}}
 
-		if found_values.SelfTest {
+		if foundValues.SelfTest {
 			// Sanity check for programming errors
-			work_unit_length := work_unit.Len()
-			if work_unit_length != 2 {
+			workUnitLength := workUnit.Len()
+			if workUnitLength != 2 {
 				pretty.Println(wl)
-				log.Fatalf("Invalid work unit length, %d", work_unit_length)
+				log.Fatalf("Invalid work unit length, %d", workUnitLength)
 			}
 		}
 
-		unit_a := work_unit[0]
-		unit_b := work_unit[1]
-		list_a := work_n(unit_a, found_values, false)
-		list_b := work_n(unit_b, found_values, false)
-		gimmie_a := NewGimmie(list_a)
-		gimmie_b := NewGimmie(list_b)
+		unitA := workUnit[0]
+		unitB := workUnit[1]
+		listA := workN(unitA, foundValues, false)
+		listB := workN(unitB, foundValues, false)
+		gimmieA := NewGimmie(listA)
+		gimmieB := NewGimmie(listB)
 
-		for a_num, err_a := gimmie_a.Next(); (err_a == nil) && run; a_num, err_a = gimmie_a.Next() {
-			for b_num, err_b := gimmie_b.Next(); (err_b == nil) && run; b_num, err_b = gimmie_b.Next() {
-				run = wf(a_num, b_num)
+		for aNum, errA := gimmieA.Next(); (errA == nil) && run; aNum, errA = gimmieA.Next() {
+			for bNum, errB := gimmieB.Next(); (errB == nil) && run; bNum, errB = gimmieB.Next() {
+				run = wf(aNum, bNum)
 			}
-			gimmie_b.Reset()
+			gimmieB.Reset()
 		}
 		if !run {
 			return
@@ -44,8 +44,8 @@ func (wl WrkLst) procWork(found_values *NumMap, wf func(a, b *Number) bool) {
 	}
 }
 
-func NewWrkLst(array_a NumCol) WrkLst {
-	var work_list []SolLst
+func NewWrkLst(arrayA NumCol) WrkLst {
+	var workList []SolLst
 	// Easier to explain by example:
 	// {2,3,4} -> {{2},{3,4}}
 	// {2,3,4,5} -> {{2}, {3,4,5}}
@@ -60,23 +60,23 @@ func NewWrkLst(array_a NumCol) WrkLst {
 	// each work unit within it is then a smaller unit
 	// so an input array of 3 numbers only generates work units that contain number lists of length 2 or less
 
-	len_array_m1 := array_a.Len() - 1
+	lenArrayM1 := arrayA.Len() - 1
 
-	for i := 0; i < (len_array_m1); i++ {
-		var ar_a, ar_b NumCol
+	for i := 0; i < (lenArrayM1); i++ {
+		var arA, arB NumCol
 		// for 3 items in arrar
 		// {0},{1,2}, {0,1}{2}
-		ar_a = make(NumCol, i+1)
-		copy(ar_a, array_a[0:i+1])
-		ar_b = make(NumCol, (array_a.Len() - (i + 1)))
+		arA = make(NumCol, i+1)
+		copy(arA, arrayA[0:i+1])
+		arB = make(NumCol, (arrayA.Len() - (i + 1)))
 
-		copy(ar_b, array_a[(i+1):(array_a.Len())])
-		var work_item SolLst // {{2},{3,4}};
+		copy(arB, arrayA[(i+1):(arrayA.Len())])
+		var workItem SolLst // {{2},{3,4}};
 		// a work item always contains 2 elements to the array
-		work_item = append(work_item, ar_a, ar_b)
-		work_list = append(work_list, work_item)
+		workItem = append(workItem, arA, arB)
+		workList = append(workList, workItem)
 	}
-	return WrkLst{lst: work_list}
+	return WrkLst{lst: workList}
 }
 func (wl WrkLst) Len() int {
 	return len(wl.lst)

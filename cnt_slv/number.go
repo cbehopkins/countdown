@@ -1,4 +1,4 @@
-package cnt_slv
+package cntSlv
 
 import (
 	"fmt"
@@ -19,10 +19,10 @@ type Number struct {
 	difficulty int
 }
 
-func NewNumber(input_a int, input_b []*Number, operation string, difficult int) *Number {
-	var new_num Number
-	new_num.configure(input_a, input_b, operation, difficult)
-	return &new_num
+func NewNumber(inputA int, inputB []*Number, operation string, difficult int) *Number {
+	var newNum Number
+	newNum.configure(inputA, inputB, operation, difficult)
+	return &newNum
 }
 
 func lessNumber(i, j interface{}) bool {
@@ -38,13 +38,13 @@ func lessNumber(i, j interface{}) bool {
 	v2 := tmp.Val
 	return v1 < v2
 }
-func (num *Number) configure(input_a int, input_b []*Number, operation string, difficult int) {
-	num.Val = input_a
+func (num *Number) configure(inputA int, inputB []*Number, operation string, difficult int) {
+	num.Val = inputA
 
-	num.list = input_b
+	num.list = inputB
 	num.operation = operation
 	num.difficulty = difficult
-	for _, v := range input_b {
+	for _, v := range inputB {
 		num.difficulty = num.difficulty + v.difficulty
 	}
 
@@ -135,25 +135,25 @@ func (i *Number) TidyOperators() {
 	// on that new number whch will merge up any additions
 
 	// But of course the first thing we want is for their house to be in order
-	tmp_list := make([]*Number, 0, 4) // CBH get this from the centra allocator
-	list_modified := false
+	tmpList := make([]*Number, 0, 4) // CBH get this from the centra allocator
+	listModified := false
 	for _, v := range i.list {
 		v.TidyOperators()
 		// Let's just combine +s for now
 		if (i.operation == "+") && (v.operation == "+") {
 			i.difficulty = i.difficulty + v.difficulty
-			tmp_list = append(tmp_list, v.list...)
-			list_modified = true
+			tmpList = append(tmpList, v.list...)
+			listModified = true
 		} else if (i.operation == "*") && (v.operation == "*") {
-			tmp_list = append(tmp_list, v.list...)
+			tmpList = append(tmpList, v.list...)
 			i.difficulty = i.difficulty + v.difficulty
-			list_modified = true
+			listModified = true
 		} else {
-			tmp_list = append(tmp_list, v)
+			tmpList = append(tmpList, v)
 		}
 	}
-	if list_modified {
-		i.list = tmp_list
+	if listModified {
+		i.list = tmpList
 	}
 
 	if (i.operation == "-") && (len(i.list) == 2) {
@@ -168,17 +168,17 @@ func (i *Number) TidyOperators() {
 			// b = i.list[0].list[1]
 			// c = i.list[1]
 			// create b+c
-			my_list0 := make([]*Number, 2)
-			my_list0[0] = i.list[1]
-			my_list0[1] = i.list[0].list[1]
+			myList0 := make([]*Number, 2)
+			myList0[0] = i.list[1]
+			myList0[1] = i.list[0].list[1]
 
-			b_plus_c := NewNumber((i.list[1].Val + i.list[0].list[1].Val), my_list0, "+", (i.list[1].difficulty + i.list[0].list[1].difficulty + 1))
+			bPlusC := NewNumber((i.list[1].Val + i.list[0].list[1].Val), myList0, "+", (i.list[1].difficulty + i.list[0].list[1].difficulty + 1))
 
-			my_list1 := make([]*Number, 2)
-			my_list1[0] = i.list[0].list[0]
-			my_list1[1] = b_plus_c
-			new_num := NewNumber(i.Val, my_list1, "-", (b_plus_c.difficulty + i.list[0].list[0].difficulty + 1))
-			i = new_num
+			myList1 := make([]*Number, 2)
+			myList1[0] = i.list[0].list[0]
+			myList1[1] = bPlusC
+			newNum := NewNumber(i.Val, myList1, "-", (bPlusC.difficulty + i.list[0].list[0].difficulty + 1))
+			i = newNum
 			//i.TidyOperators()
 			i.ProveSol() //CBH we've made serious modification so test it
 		} else if i.list[1].operation == "-" {
@@ -189,17 +189,17 @@ func (i *Number) TidyOperators() {
 			// c = i.list[1].list[1]
 
 			// create a+c
-			my_list0 := make(NumCol, 2)
-			my_list0[0] = i.list[0]
-			my_list0[1] = i.list[1].list[1]
-			a_plus_c := NewNumber((my_list0[0].Val + my_list0[1].Val), my_list0, "+", (my_list0[0].difficulty + my_list0[1].difficulty + 1))
+			myList0 := make(NumCol, 2)
+			myList0[0] = i.list[0]
+			myList0[1] = i.list[1].list[1]
+			aPlusC := NewNumber((myList0[0].Val + myList0[1].Val), myList0, "+", (myList0[0].difficulty + myList0[1].difficulty + 1))
 
-			my_list1 := make(NumCol, 2)
-			my_list1[0] = a_plus_c
-			my_list1[1] = i.list[1].list[0]
-			new_num := NewNumber(i.Val, my_list1, "-", (a_plus_c.difficulty + my_list1[1].difficulty + 1))
+			myList1 := make(NumCol, 2)
+			myList1[0] = aPlusC
+			myList1[1] = i.list[1].list[0]
+			newNum := NewNumber(i.Val, myList1, "-", (aPlusC.difficulty + myList1[1].difficulty + 1))
 
-			i = new_num
+			i = newNum
 			//i.TidyOperators()
 			i.ProveSol()
 		}
@@ -211,8 +211,8 @@ func (i *Number) ProveSol() int {
 	// This function should go through the list and prove the solution
 	// Also do other sanity checking like the ,/- operators only have 2 items in the list
 	// That anything with a valid operator has >1 item in the list
-	running_total := 0
-	first_run := true
+	runningTotal := 0
+	firstRun := true
 	if (i.list == nil) || (len(i.list) == 0) {
 		// This is a source value
 		return i.Val
@@ -222,36 +222,36 @@ func (i *Number) ProveSol() int {
 		return 0
 	} else {
 		for _, v := range i.list {
-			if first_run {
+			if firstRun {
 				//pretty.Print(v)
-				first_run = false
-				running_total = v.ProveSol()
+				firstRun = false
+				runningTotal = v.ProveSol()
 			} else {
 				switch i.operation {
 				case "+":
-					running_total = running_total + v.ProveSol()
+					runningTotal = runningTotal + v.ProveSol()
 				case "-":
-					running_total = running_total - v.ProveSol()
+					runningTotal = runningTotal - v.ProveSol()
 				case "--":
-					running_total = v.ProveSol() - running_total
+					runningTotal = v.ProveSol() - runningTotal
 				case "*":
-					running_total = running_total * v.ProveSol()
+					runningTotal = runningTotal * v.ProveSol()
 				case "/":
-					running_total = running_total / v.ProveSol()
+					runningTotal = runningTotal / v.ProveSol()
 				case "\\":
-					running_total = v.ProveSol() / running_total
+					runningTotal = v.ProveSol() / runningTotal
 				default:
 					log.Fatal("Unknown operation type")
 				}
 			}
 		}
-		if running_total != i.Val {
+		if runningTotal != i.Val {
 			pretty.Println(i)
 
-			fmt.Println("We calculated ", running_total, i.String())
+			fmt.Println("We calculated ", runningTotal, i.String())
 			log.Fatal("Failed to self check solution")
 		}
-		return running_total
+		return runningTotal
 	}
 }
 func (i *Number) SetDifficulty() int {

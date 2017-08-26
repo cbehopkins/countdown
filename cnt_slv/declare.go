@@ -1,4 +1,4 @@
-package cnt_slv
+package cntSlv
 
 import (
 	//	"fmt"
@@ -16,33 +16,33 @@ import (
 type NumCol []*Number
 type SolLst []NumCol
 
-func (found_values *NumMap) CountHelper(target int, sources []int) chan SolLst {
+func (foundValues *NumMap) CountHelper(target int, sources []int) chan SolLst {
 
 	// Create a list of the input sources
-	srcNumbers := found_values.NewNumCol(sources)
-	found_values.SetTarget(target)
+	srcNumbers := foundValues.NewNumCol(sources)
+	foundValues.SetTarget(target)
 
-	return permuteN(srcNumbers, found_values)
+	return permuteN(srcNumbers, foundValues)
 }
 
-func (found_values *NumMap) NewNumCol(input []int) NumCol {
+func (foundValues *NumMap) NewNumCol(input []int) NumCol {
 	var list NumCol
-	var empty_list NumCol
+	var emptyList NumCol
 
 	for _, v := range input {
-		a := NewNumber(v, empty_list, "I", 0)
-		found_values.Add(v, a)
+		a := NewNumber(v, emptyList, "I", 0)
+		foundValues.Add(v, a)
 		list = append(list, a)
 	}
 	return list
 }
 
 // This function is used to add the initial numbers
-func (bob *NumCol) AddNum(input_num int, found_values *NumMap) {
-	var empty_list NumCol
+func (bob *NumCol) AddNum(inputNum int, foundValues *NumMap) {
+	var emptyList NumCol
 
-	a := NewNumber(input_num, empty_list, "I", 0)
-	found_values.Add(input_num, a)
+	a := NewNumber(inputNum, emptyList, "I", 0)
+	foundValues.Add(inputNum, a)
 	*bob = append(*bob, a)
 
 }
@@ -52,38 +52,38 @@ func (item *SolLst) RemoveDuplicates() {
 	// and modify the list to only include unique sets
 	// any sets that produce the same string are considered identical
 	// that is the collection contains the same values
-  if false {
-	sol_map := make(map[string]NumCol)
-	var del_queue []int
-	for i := 0; i < len(*item); i++ {
-		var v NumCol
-		var t SolLst
-		t = *item
-		v = t[i]
-		str := v.String()
+	if false {
+		solMap := make(map[string]NumCol)
+		var delQueue []int
+		for i := 0; i < len(*item); i++ {
+			var v NumCol
+			var t SolLst
+			t = *item
+			v = t[i]
+			str := v.String()
 
-		_, ok := sol_map[str]
-		if !ok {
-			//fmt.Println("Added ", v)
-			sol_map[str] = v
-		} else {
-			//fmt.Printf("%s already exists\n", string)
-			//pretty.Println(t1)
-			//fmt.Printf("It is now, %d", i);
-			//pretty.Println(t0);
-			del_queue = append(del_queue, i)
+			_, ok := solMap[str]
+			if !ok {
+				//fmt.Println("Added ", v)
+				solMap[str] = v
+			} else {
+				//fmt.Printf("%s already exists\n", string)
+				//pretty.Println(t1)
+				//fmt.Printf("It is now, %d", i);
+				//pretty.Println(t0);
+				delQueue = append(delQueue, i)
+			}
 		}
-	}
 
-	for i := len(del_queue); i > 0; i-- {
-		//fmt.Printf("DQ#%d, Len=%d\n",i, len(del_queue))
-		v := del_queue[i-1]
-		//fmt.Println("You've asked to delete",v);
-		l1 := *item
-		*item = append(l1[:v], l1[v+1:]...)
+		for i := len(delQueue); i > 0; i-- {
+			//fmt.Printf("DQ#%d, Len=%d\n",i, len(del_queue))
+			v := delQueue[i-1]
+			//fmt.Println("You've asked to delete",v);
+			l1 := *item
+			*item = append(l1[:v], l1[v+1:]...)
+		}
+		//fmt.Printf("In Check, OrigLen %d, New Len %d\n",orig_len,len(*item))
 	}
-	//fmt.Printf("In Check, OrigLen %d, New Len %d\n",orig_len,len(*item))
-  }
 }
 func (item NumCol) TidyNumCol() {
 	for _, v := range item {
@@ -100,27 +100,27 @@ func (item SolLst) TidySolLst() {
 }
 
 func (item NumCol) String() string {
-	var ret_str string
+	var retStr string
 	comma := ""
-	ret_str = ""
-	tmp_array := make([]int, len(item))
+	retStr = ""
+	tmpArray := make([]int, len(item))
 
 	// Get the numbers, then sort them, then print them
 	for i, v := range item {
-		tmp_array[i] = v.Val
+		tmpArray[i] = v.Val
 	}
-	sort.Ints(tmp_array)
-	for _, v := range tmp_array {
+	sort.Ints(tmpArray)
+	for _, v := range tmpArray {
 		//ret_str = ret_str + comma + fmt.Sprintf("%d", v)
-		ret_str = ret_str + comma + strconv.Itoa(v)
+		retStr = retStr + comma + strconv.Itoa(v)
 		comma = ","
 	}
-	return ret_str
+	return retStr
 }
-func (proof_list SolLst) String() string {
-	var ret_val string
-	if len(proof_list) > 0 {
-		for _, v := range proof_list {
+func (proofList SolLst) String() string {
+	var retVal string
+	if len(proofList) > 0 {
+		for _, v := range proofList {
 			// v is *NumCol
 			for _, w := range v {
 				// w is *Number
@@ -128,32 +128,32 @@ func (proof_list SolLst) String() string {
 				Value = w.Val
 
 				//ret_val = ret_val + fmt.Sprintf("Value %3d, = ", Value) + w.String() + "\n"
-				ret_val = ret_val + "Value " + strconv.Itoa(Value) + ", = " + w.String() + "\n"
+				retVal = retVal + "Value " + strconv.Itoa(Value) + ", = " + w.String() + "\n"
 			}
 		}
-		ret_val = ret_val + "Done printing proofs\n"
+		retVal = retVal + "Done printing proofs\n"
 	} else {
-		ret_val = "No proofs found"
+		retVal = "No proofs found"
 	}
-	return ret_val
+	return retVal
 }
-func (proof_list SolLst) StringNum(val int) string {
-	var ret_val string
-	for _, v := range proof_list {
+func (proofList SolLst) StringNum(val int) string {
+	var retVal string
+	for _, v := range proofList {
 		for _, w := range v {
 			// w is *Number
 			var Value int
 			Value = w.Val
 			if Value == val {
-				ret_val = ret_val + "Value " + strconv.Itoa(Value) + ", = " + w.String() + "\n"
+				retVal = retVal + "Value " + strconv.Itoa(Value) + ", = " + w.String() + "\n"
 			}
 		}
 	}
-	return ret_val
+	return retVal
 }
-func (proof_list SolLst) Exists(val int) bool {
+func (proofList SolLst) Exists(val int) bool {
 
-	for _, v := range proof_list {
+	for _, v := range proofList {
 		for _, w := range v {
 			// w is *Number
 			var Value int
@@ -166,15 +166,15 @@ func (proof_list SolLst) Exists(val int) bool {
 	return false
 }
 func (bob NumCol) Len() int {
-	var array_len int
-	array_len = len(bob)
-	return array_len
+	var arrayLen int
+	arrayLen = len(bob)
+	return arrayLen
 }
 func (i0 NumCol) Equal(i1 NumCol) bool {
 	if len(i0) != len(i1) {
 		return false
 	}
-	for i, _ := range i0 {
+	for i := range i0 {
 		i0Val := i0[i].Val
 		i1Val := i1[i].Val
 		if i0Val != i1Val {

@@ -1,7 +1,7 @@
-package cnt_slv
+package cntSlv
 
 import (
-"log"
+	"log"
 )
 
 // workers contains the worker functions
@@ -17,30 +17,30 @@ const (
 	NetMap
 )
 
-func WorkN(array_in NumCol, found_values *NumMap) SolLst {
-	for _, j := range array_in {
+func WorkN(arrayIn NumCol, foundValues *NumMap) SolLst {
+	for _, j := range arrayIn {
 		if j.Val == 0 {
 			log.Fatal("WorkN fed a 0 number")
 		}
 	}
-	return work_n(array_in, found_values, false)
+	return workN(arrayIn, foundValues, false)
 }
 
-func work_n(array_in NumCol, found_values *NumMap, multipass bool) SolLst {
-	var ret_list SolLst
-	len_array_in := array_in.Len()
-	if found_values.Solved() {
-		return ret_list
+func workN(arrayIn NumCol, foundValues *NumMap, multipass bool) SolLst {
+	var retList SolLst
+	lenArrayIn := arrayIn.Len()
+	if foundValues.Solved() {
+		return retList
 	}
-	if len_array_in == 1 {
+	if lenArrayIn == 1 {
 		//ret_list = append(ret_list, &array_in)
-		return SolLst{array_in}
-	} else if len_array_in == 2 {
-		var tmp_list NumCol
-		tmp_list = found_values.make_2_to_1(array_in[0:2])
-		found_values.AddMany(tmp_list...)
-		ret_list = append(ret_list, tmp_list, array_in)
-		return ret_list
+		return SolLst{arrayIn}
+	} else if lenArrayIn == 2 {
+		var tmpList NumCol
+		tmpList = foundValues.make2To1(arrayIn[0:2])
+		foundValues.AddMany(tmpList...)
+		retList = append(retList, tmpList, arrayIn)
+		return retList
 	}
 
 	// work_n takes
@@ -54,106 +54,106 @@ func work_n(array_in NumCol, found_values *NumMap, multipass bool) SolLst {
 	// we then take each value in this list and work that to get {{9},{3}}
 	// the final list we want to return is {{5,4}, {1,4}, {9},{3}}
 	// the reason to not return {2,3,4} is so that in the grand scheme of things we can recurse these lists
-	var work_list WrkLst
-	work_list = NewWrkLst(array_in)
+	var workList WrkLst
+	workList = NewWrkLst(arrayIn)
 	// so by this stage we have something like {{{2},{3,4}}} or for a 4 variable: { {{2}, {3,4,5}}, {{2,3},{4,5}} }
 
 	if multipass {
-		cross_len := 0
-		num_numbers_to_make := 0
+		crossLen := 0
+		numNumbersToMake := 0
 
-		determineSizeFunc := func(a_num, b_num *Number) bool {
-			if a_num.Val <= 0 || b_num.Val <= 0 {
-				log.Fatalf("Gimmie gave %d, %d", a_num.Val, b_num.Val)
+		determineSizeFunc := func(aNum, bNum *Number) bool {
+			if aNum.Val <= 0 || bNum.Val <= 0 {
+				log.Fatalf("Gimmie gave %d, %d", aNum.Val, bNum.Val)
 			}
 			tmp,
-				_, _, _, _, _ := found_values.do_maths([]*Number{a_num, b_num})
-			num_numbers_to_make += tmp
-			cross_len++
+				_, _, _, _, _ := foundValues.doMaths([]*Number{aNum, bNum})
+			numNumbersToMake += tmp
+			crossLen++
 			return true
 		}
 
-		work_list.procWork(found_values, determineSizeFunc)
+		workList.procWork(foundValues, determineSizeFunc)
 
-		top_src_to_make := cross_len * 2
-		top_numbers_to_make := num_numbers_to_make
+		topSrcToMake := crossLen * 2
+		topNumbersToMake := numNumbersToMake
 		//current_item = 0
-		var work_unit SolLst
+		var workUnit SolLst
 		// Last Item on work list contains sources
-		work_unit = work_list.Last()
+		workUnit = workList.Last()
 		// Malloc the memory once!
-		current_number_loc := 0
+		currentNumberLoc := 0
 		// This is the list of numbers that calculations are done from
-		src_list := found_values.aquire_numbers(top_src_to_make)
+		srcList := foundValues.acquireNumbers(topSrcToMake)
 		// This is the list of numbers that will be used in the proof
 		// i.e. the list that calculations results end up in
-		num_list := found_values.aquire_numbers(top_numbers_to_make)
+		numList := foundValues.acquireNumbers(topNumbersToMake)
 		// And this allocates the list that will point to those (previously allocated) numbers
 
-		ret_list = make(SolLst, 0, (cross_len + len(work_unit)))
+		retList = make(SolLst, 0, (crossLen + len(workUnit)))
 		// Add on the work unit because that contains sub combinations that may be of use
-		ret_list = append(ret_list, work_unit...)
-		current_src := 0
-		workerFunc := func(a_num, b_num *Number) bool {
+		retList = append(retList, workUnit...)
+		currentSrc := 0
+		workerFunc := func(aNum, bNum *Number) bool {
 			// Here we have unrolled the functionality of make_2_to_1
 			// So that it can use a single array
 			// This is all to put less work on the malloc and gc
 
-			if found_values.Solved() {
+			if foundValues.Solved() {
 				return false
 			}
 
-			// We have to re-caclulate
+			// We have to recalculate
 
-			src_list[current_src] = a_num
-			src_list[current_src+1] = b_num
+			srcList[currentSrc] = aNum
+			srcList[currentSrc+1] = bNum
 			// Shorthand to make code more readable
-			bob_list := src_list[current_src : current_src+2]
-			if a_num.Val == 0 || b_num.Val == 0 {
-				log.Fatalf("Gimmie gave %d, %d", a_num.Val, b_num.Val)
+			bobList := srcList[currentSrc : currentSrc+2]
+			if aNum.Val == 0 || bNum.Val == 0 {
+				log.Fatalf("Gimmie gave %d, %d", aNum.Val, bNum.Val)
 			}
 
-			num_to_make,
-				add_set, mul_set, sub_set, div_set,
-				a_gt_b := found_values.do_maths(bob_list)
+			numToMake,
+				addSet, mulSet, subSet, divSet,
+				aGtB := foundValues.doMaths(bobList)
 
 			// Shorthand
-			tmp_list := num_list[current_number_loc:(current_number_loc + num_to_make)]
+			tmpList := numList[currentNumberLoc:(currentNumberLoc + numToMake)]
 
 			// Populate the part of the return list for this run
 			// This is the arra AddItems will write into
 			// num_list gets filled with numbers, tmp_list is an alias to the same data here
-			found_values.AddItems(bob_list, num_list, current_number_loc,
-				add_set, mul_set, sub_set, div_set,
-				a_gt_b)
-			current_number_loc += num_to_make
-			current_src += 2
-			if found_values.SelfTest {
-				for _, v := range tmp_list {
+			foundValues.AddItems(bobList, numList, currentNumberLoc,
+				addSet, mulSet, subSet, divSet,
+				aGtB)
+			currentNumberLoc += numToMake
+			currentSrc += 2
+			if foundValues.SelfTest {
+				for _, v := range tmpList {
 					v.ProveSol()
 				}
 			}
-			ret_list = append(ret_list, tmp_list)
+			retList = append(retList, tmpList)
 			return true
 		}
-		work_list.procWork(found_values, workerFunc)
+		workList.procWork(foundValues, workerFunc)
 
 	} else {
 
-		workerFunc := func(a_num, b_num *Number) bool {
-			bob_list := make([]*Number, 2)
-			bob_list[0] = a_num
-			bob_list[1] = b_num
+		workerFunc := func(aNum, bNum *Number) bool {
+			bobList := make([]*Number, 2)
+			bobList[0] = aNum
+			bobList[1] = bNum
 
-			var tmp_list NumCol
-			tmp_list = found_values.make_2_to_1(bob_list)
-			found_values.AddMany(tmp_list...)
-			ret_list = append(ret_list, tmp_list, array_in)
+			var tmpList NumCol
+			tmpList = foundValues.make2To1(bobList)
+			foundValues.AddMany(tmpList...)
+			retList = append(retList, tmpList, arrayIn)
 			return true
 		}
-		work_list.procWork(found_values, workerFunc)
+		workList.procWork(foundValues, workerFunc)
 	}
 	// Add the entire solution list found in the previous loop in one go
-	found_values.AddSol(ret_list, false)
-	return ret_list
+	foundValues.AddSol(retList, false)
+	return retList
 }

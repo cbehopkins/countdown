@@ -1,4 +1,4 @@
-package cnt_slv
+package cntSlv
 
 import (
 	"fmt"
@@ -10,8 +10,8 @@ import (
 // Trivial I know, but we put effort into doing this minimising load on the rest of the
 // system
 
-func (found_values *NumMap) do_maths(list []*Number) (num_to_make int,
-	add_set, mul_set, sub_set, div_set, a_gt_b bool) {
+func (foundValues *NumMap) doMaths(list []*Number) (numToMake int,
+	addSet, mulSet, subSet, divSet, aGtB bool) {
 	// The thing that slows us down isn't calculations, but channel communications of generating new numbers
 	// allocating memory for new numbers and garbage collecting the pointless old ones
 	// So it's worth spending some CPU working out the useless calculations
@@ -21,7 +21,7 @@ func (found_values *NumMap) do_maths(list []*Number) (num_to_make int,
 	b := list[1].Val
 	a0 := a <= 0
 	b0 := b <= 0
-	a_gt_b = (a > b)
+	aGtB = (a > b)
 
 	a1 := (a == 1)
 	b1 := (b == 1)
@@ -30,87 +30,87 @@ func (found_values *NumMap) do_maths(list []*Number) (num_to_make int,
 		log.Fatal("We got 0 as an input to do_maths - who is feeding us rubbish??")
 	}
 
-	add_set = true
-	mul_set = found_values.UseMult
-	num_to_make = 1
-	if mul_set {
+	addSet = true
+	mulSet = foundValues.UseMult
+	numToMake = 1
+	if mulSet {
 		if (a * b) > 0 {
-			num_to_make = 2
+			numToMake = 2
 		} else {
-			mul_set = false
+			mulSet = false
 		}
 
 	}
-	if a_gt_b {
-		sub_res_amb := a - b
+	if aGtB {
+		subResAmb := a - b
 		amb0 := ((a % b) == 0)
-		if (sub_res_amb != a) && (sub_res_amb != 0) {
-			sub_set = true
-			num_to_make++
+		if (subResAmb != a) && (subResAmb != 0) {
+			subSet = true
+			numToMake++
 		}
 		if !b1 && amb0 {
-			div_set = true
-			num_to_make++
+			divSet = true
+			numToMake++
 		}
 	} else {
-		sub_res_bma := b - a
+		subResBma := b - a
 		bma0 := ((b % a) == 0)
-		if (sub_res_bma != b) && (sub_res_bma != 0) {
-			sub_set = true
-			num_to_make++
+		if (subResBma != b) && (subResBma != 0) {
+			subSet = true
+			numToMake++
 		}
 		if !a1 && bma0 {
-			div_set = true
-			num_to_make++
+			divSet = true
+			numToMake++
 		}
 	}
 	return
 }
 
-func (found_values *NumMap) AddItems(list []*Number, ret_list []*Number, current_number_loc int,
-	add_set, mul_set, sub_set, div_set, a_gt_b bool) {
+func (foundValues *NumMap) AddItems(list []*Number, retList []*Number, currentNumberLoc int,
+	addSet, mulSet, subSet, divSet, aGtB bool) {
 	a := list[0].Val
 	b := list[1].Val
-	saved_current_number_loc := current_number_loc
-	if add_set {
-		ret_list[current_number_loc].configure(a+b, list, "+", 1)
-		current_number_loc++
+	savedCurrentNumberLoc := currentNumberLoc
+	if addSet {
+		retList[currentNumberLoc].configure(a+b, list, "+", 1)
+		currentNumberLoc++
 	}
 
-	if sub_set {
-		if a_gt_b {
-			ret_list[current_number_loc].configure(a-b, list, "-", 1)
+	if subSet {
+		if aGtB {
+			retList[currentNumberLoc].configure(a-b, list, "-", 1)
 		} else {
-			ret_list[current_number_loc].configure(b-a, list, "--", 1)
+			retList[currentNumberLoc].configure(b-a, list, "--", 1)
 		}
-		current_number_loc++
+		currentNumberLoc++
 	}
-	if mul_set {
-		ret_list[current_number_loc].configure(a*b, list, "*", 2)
-		current_number_loc++
+	if mulSet {
+		retList[currentNumberLoc].configure(a*b, list, "*", 2)
+		currentNumberLoc++
 	}
-	if div_set {
-		if a_gt_b {
-			ret_list[current_number_loc].configure(a/b, list, "/", 3)
+	if divSet {
+		if aGtB {
+			retList[currentNumberLoc].configure(a/b, list, "/", 3)
 		} else {
-			ret_list[current_number_loc].configure(b/a, list, "\\", 3)
+			retList[currentNumberLoc].configure(b/a, list, "\\", 3)
 		}
-		current_number_loc++
+		currentNumberLoc++
 	}
-	for i := saved_current_number_loc; i < current_number_loc; i++ {
-		v := ret_list[i]
+	for i := savedCurrentNumberLoc; i < currentNumberLoc; i++ {
+		v := retList[i]
 		if v.Val <= 0 {
 			pretty.Println(v)
 			fmt.Printf("value %d is %d, %d, %d\n", i, v.Val, a, b)
-			fmt.Printf("add_set=%t, mul_set=%t, sub_set=%t, div_set=%t, a_gt_b=%t\n", add_set, mul_set, sub_set, div_set, a_gt_b)
-			for j := saved_current_number_loc; j < current_number_loc; j++ {
-				fmt.Printf("Val: %d\n", ret_list[j].Val)
+			fmt.Printf("add_set=%t, mul_set=%t, sub_set=%t, div_set=%t, a_gt_b=%t\n", addSet, mulSet, subSet, divSet, aGtB)
+			for j := savedCurrentNumberLoc; j < currentNumberLoc; j++ {
+				fmt.Printf("Val: %d\n", retList[j].Val)
 			}
 			log.Fatal("result <0")
 		}
 	}
 }
-func (found_values *NumMap) make_2_to_1(list NumCol) NumCol {
+func (foundValues *NumMap) make2To1(list NumCol) NumCol {
 	// This is (conceptually) returning a list of numbers
 	// That can be generated from 2 input numbers
 	// organised in such a way that we know how we created them
@@ -118,22 +118,22 @@ func (found_values *NumMap) make_2_to_1(list NumCol) NumCol {
 		pretty.Print(list)
 		log.Fatal("Invalid make2 list length")
 	}
-	var ret_list NumCol
-	num_to_make,
-		add_set, mul_set, sub_set, div_set,
-		a_gt_b := found_values.do_maths(list)
+	var retList NumCol
+	numToMake,
+		addSet, mulSet, subSet, divSet,
+		aGtB := foundValues.doMaths(list)
 
 	// Now Grab the memory
 	//ret_list = found_values.aquire_numbers(num_to_make)
-	ret_list = make([]*Number, num_to_make)
-	for i, _ := range ret_list {
-		ret_list[i] = new(Number)
+	retList = make([]*Number, numToMake)
+	for i := range retList {
+		retList[i] = new(Number)
 	}
 
-	current_number_loc := 0
-	found_values.AddItems(list, ret_list, current_number_loc,
-		add_set, mul_set, sub_set, div_set,
-		a_gt_b)
+	currentNumberLoc := 0
+	foundValues.AddItems(list, retList, currentNumberLoc,
+		addSet, mulSet, subSet, divSet,
+		aGtB)
 
-	return ret_list
+	return retList
 }

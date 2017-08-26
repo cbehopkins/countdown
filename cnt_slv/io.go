@@ -1,4 +1,4 @@
-package cnt_slv
+package cntSlv
 
 import (
 	"encoding/json"
@@ -41,30 +41,30 @@ func AddNum(input Number) (result JsonNum) {
 	}
 	return result
 }
-func (item *NumMap) AddJsonNum(input JsonNum) (new_number Number) {
-	new_number.Val = input.Val
-	new_number.operation = input.Op
+func (item *NumMap) AddJsonNum(input JsonNum) (newNumber Number) {
+	newNumber.Val = input.Val
+	newNumber.operation = input.Op
 	if len(input.List.List) > 0 {
-		new_number.list = make([]*Number, len(input.List.List))
+		newNumber.list = make([]*Number, len(input.List.List))
 		for i, p := range input.List.List {
-			tmp_num := item.AddJsonNum(p)
-			new_number.list[i] = &tmp_num
+			tmpNum := item.AddJsonNum(p)
+			newNumber.list[i] = &tmpNum
 		}
 	}
-	item.Add(input.Val, &new_number)
+	item.Add(input.Val, &newNumber)
 
-	return new_number
+	return newNumber
 }
 func (item *NumMap) MarshalJson() (output []byte, err error) {
-	thing_list := NewJsonStruct(len(item.nmp))
+	thingList := NewJsonStruct(len(item.nmp))
 
 	for _, v := range item.nmp {
 		tmp := AddNum(*v)
-		thing_list.Add(tmp)
+		thingList.Add(tmp)
 	}
 
 	//output, err = json.MarshalIndent(thing_list, "", "    ")
-	output, err = json.Marshal(thing_list)
+	output, err = json.Marshal(thingList)
 	//if err != nil {
 	//	fmt.Printf("error: %v\n", err)
 	//}
