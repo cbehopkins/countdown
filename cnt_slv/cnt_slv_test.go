@@ -2,11 +2,10 @@ package cnt_slv
 
 import (
 	"fmt"
-	"log"
+	"github.com/pkg/profile"
 	"math/rand"
-	"os"
 	"runtime"
-	"runtime/pprof"
+
 	"sync"
 	"testing"
 )
@@ -43,6 +42,8 @@ func init_many() []testset {
 }
 
 func TestOne(t *testing.T) {
+	defer profile.Start().Stop()
+  //defer profile.Start(profile.MemProfile).Stop()
 	var target int
 	//target = 78
 	target = 531000
@@ -74,7 +75,7 @@ func TestOne(t *testing.T) {
 			// This unused code is handy if we want a proof list
 			proof_list = append(proof_list, v...)
 			cleanup_packer++
-			if cleanup_packer > 1000 {
+			if cleanup_packer > 10 {
 				check_return_list(proof_list, found_values)
 				proof_list.RemoveDuplicates()
 				cleanup_packer = 0
@@ -96,7 +97,7 @@ func TestOne(t *testing.T) {
 }
 
 func TestMany(t *testing.T) {
-
+	defer profile.Start(profile.MemProfile).Stop()
 	test_set := init_many()
 	for _, item := range test_set {
 		proof_list := *new(SolLst)
@@ -136,14 +137,14 @@ func TestMany(t *testing.T) {
 			t.Fail()
 		}
 	}
-	if false {
-		f, err := os.Create("memprofile.prof")
-		if err != nil {
-			log.Fatal(err)
-		}
-		pprof.WriteHeapProfile(f)
-		f.Close()
-	}
+	//	if false {
+	//		f, err := os.Create("memprofile.prof")
+	//		if err != nil {
+	//			log.Fatal(err)
+	//		}
+	//		pprof.WriteHeapProfile(f)
+	//		f.Close()
+	//	}
 }
 func init_fail_many() []testset {
 	ret_lst := make([]testset, 0, 7)
@@ -154,12 +155,14 @@ func init_fail_many() []testset {
 }
 
 func TestFail(t *testing.T) {
+	defer profile.Start(profile.MemProfile).Stop()
+
 	test_set := init_fail_many()
 	for _, item := range test_set {
 		proof_list := *new(SolLst)
 		bob := *new(NumCol)
 		found_values := NewNumMap() //pass it the proof list so it can auto-check for validity at the end
-		found_values.SelfTest = true
+		found_values.SelfTest = false
 		found_values.UseMult = true
 
 		for _, itm := range item.Selected {
@@ -177,7 +180,7 @@ func TestFail(t *testing.T) {
 				// This unused code is handy if we want a proof list
 				proof_list = append(proof_list, v...)
 				cleanup_packer++
-				if cleanup_packer > 1000 {
+				if cleanup_packer > 10 {
 					proof_list.RemoveDuplicates()
 					cleanup_packer = 0
 				}
@@ -304,7 +307,7 @@ func TestReduction(t *testing.T) {
 	//found_values0.PrintProofs()
 }
 
-func BenchmarkWorkn(b *testing.B) {
+func BenchmarkWorknMulti(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()
@@ -328,8 +331,35 @@ func BenchmarkWorkn(b *testing.B) {
 		target := rand.Intn(1000)
 		found_values.SetTarget(target)
 		runtime.GC()
-		fmt.Println("Starting work_n")
 		b.StartTimer()
-		work_n(bob, found_values)
+		work_n(bob, found_values,true)
+	}
+}
+func BenchmarkWorknSingle(b *testing.B) {
+
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+		found_values := NewNumMap()
+		found_values.SelfTest = true
+		found_values.UseMult = true
+		var bob NumCol
+		nu_map := make(map[int]struct{})
+		for j := 0; j < 6; j++ {
+			run := true
+			var k int
+			for run {
+				k = rand.Intn(100)
+				if k > 0 {
+					_, run = nu_map[k] // If it exists generate anther
+					nu_map[k] = struct{}{}
+				}
+			}
+			bob.AddNum(k, found_values)
+		}
+		target := rand.Intn(1000)
+		found_values.SetTarget(target)
+		runtime.GC()
+		b.StartTimer()
+		work_n(bob, found_values, false)
 	}
 }

@@ -17,16 +17,15 @@ type NumMapAtom struct {
 }
 
 type NumMap struct {
-	map_lock            sync.RWMutex // The lock on nmp
-	nmp                 map[int]*Number
-	TargetSet           bool
-	Target              int
+	map_lock  sync.RWMutex // The lock on nmp
+	nmp       map[int]*Number
+	TargetSet bool
+	Target    int
+	// When there are numbers to add, we queue them on the channel so
+	// we can process them in batches
 	input_channel       chan NumMapAtom
 	input_channel_array chan []NumMapAtom
 	done_channel        chan bool
-	num_struct_queue    chan *Number
-
-	NumPool_2 sync.Pool
 
 	const_lk    sync.RWMutex
 	solved      *bool
@@ -44,17 +43,7 @@ func NewNumMap() *NumMap {
 	p.input_channel_array = make(chan []NumMapAtom, 100)
 	p.done_channel = make(chan bool)
 	p.TargetSet = false
-
 	go p.AddProc()
-
-	p.num_struct_queue = make(chan *Number, 1024)
-
-	p.NumPool_2 = sync.Pool{
-		New: func() interface{} {
-			return p.NewPoolI(2)
-		},
-	}
-
 	return p
 }
 func (nmp *NumMap) Solved() bool {
@@ -114,11 +103,7 @@ func (nm *NumMap) NewPoolI(num_to_make int) NumCol {
 }
 
 func (nm *NumMap) aquire_numbers(num_to_make int) NumCol {
-	if num_to_make == 2 {
-		return nm.NumPool_2.Get().(NumCol)
-	} else {
-		return nm.NewPoolI(num_to_make)
-	}
+	return nm.NewPoolI(num_to_make)
 }
 
 func (item *NumMap) Add(a int, b *Number) {
@@ -169,12 +154,14 @@ func (item *NumMap) add_item(value int, stct *Number, report bool) {
 	// The lock on the map structure must be grabbed outside
 	retr, ok := item.nmp[value]
 	if !ok {
-		item.nmp[value] = stct
+		//item.nmp[value] = stct
 		if item.TargetSet {
 			if value == item.Target {
+				// Store the solution we found
+				item.nmp[value] = stct
 
-				proof_string := stct.String()
-				fmt.Printf("Value %d, = %s, Proof Len is %d, Difficulty is %d\n", value, proof_string, stct.ProofLen(), stct.difficulty)
+				//proof_string := stct.String()
+				//fmt.Printf("Value %d, = %s, Proof Len is %d, Difficulty is %d\n", value, proof_string, stct.ProofLen(), stct.difficulty)
 				// Seeking the shortest, means run every combination we can
 				if !item.SeekShort {
 					item.const_lk.RUnlock()
@@ -185,6 +172,9 @@ func (item *NumMap) add_item(value int, stct *Number, report bool) {
 				}
 				fmt.Println("Set Solved sucessfully")
 			}
+		} else {
+			// When there is no target, the we care about every solution
+			item.nmp[value] = stct
 		}
 	} else if item.SeekShort && (retr.difficulty > stct.difficulty) {
 		// In seek short mode, then update when it has a shorter proof

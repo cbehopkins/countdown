@@ -124,7 +124,11 @@ func (found_values *NumMap) make_2_to_1(list NumCol) NumCol {
 		a_gt_b := found_values.do_maths(list)
 
 	// Now Grab the memory
-	ret_list = found_values.aquire_numbers(num_to_make)
+	//ret_list = found_values.aquire_numbers(num_to_make)
+	ret_list = make([]*Number, num_to_make)
+	for i, _ := range ret_list {
+		ret_list[i] = new(Number)
+	}
 
 	current_number_loc := 0
 	found_values.AddItems(list, ret_list, current_number_loc,

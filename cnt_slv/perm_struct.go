@@ -83,7 +83,7 @@ func (ps *perm_struct) worker_par(it NumCol, fv *NumMap) {
 
 	//////////
 	// Run the compute
-	work_n(it, arthur)
+	work_n(it, arthur, false)
 	arthur.LastNumMap()
 
 	//////////
@@ -94,15 +94,11 @@ func (ps *perm_struct) worker_par(it NumCol, fv *NumMap) {
 	ps.coallate_done <- true
 }
 func (ps *perm_struct) worker_lone(it NumCol, fv *NumMap) {
-	if fv.Solved() {
-		ps.coallate_done <- true
-		ps.channel_tokens <- true
-		return
+	if !fv.Solved() {
+	  ps.coallate_chan <- work_n(it, fv, false)
 	}
-	ps.coallate_chan <- work_n(it, fv)
 	ps.coallate_done <- true
 	ps.channel_tokens <- true // Now we're done, add a token to allow another to start
-
 }
 func (ps *perm_struct) worker_net_send(it NumCol, fv *NumMap) {
 	fv.const_lk.RLock()
@@ -349,13 +345,11 @@ func RunPermute(array_in NumCol, found_values *NumMap, proof_list chan SolLst) {
 	// However the framework seems to be there
 	// TBD make this a comannd line variable
 
-	//fmt.Println("Start Permute")
 
 	pstrct := new_perm_struct(array_in, found_values)
 	required_tokens := 64
 	pstrct.NumWorkers(required_tokens)
 	pstrct.Workers(proof_list)
-
 	found_values.LastNumMap()
 }
 func permuteN(array_in NumCol, found_values *NumMap) (proof_list chan SolLst) {

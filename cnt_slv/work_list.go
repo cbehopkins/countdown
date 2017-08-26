@@ -27,8 +27,8 @@ func (wl WrkLst) procWork(found_values *NumMap, wf func(a, b *Number) bool) {
 
 		unit_a := work_unit[0]
 		unit_b := work_unit[1]
-		list_a := work_n(unit_a, found_values)
-		list_b := work_n(unit_b, found_values)
+		list_a := work_n(unit_a, found_values, false)
+		list_b := work_n(unit_b, found_values, false)
 		gimmie_a := NewGimmie(list_a)
 		gimmie_b := NewGimmie(list_b)
 

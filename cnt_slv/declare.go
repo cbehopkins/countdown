@@ -52,6 +52,7 @@ func (item *SolLst) RemoveDuplicates() {
 	// and modify the list to only include unique sets
 	// any sets that produce the same string are considered identical
 	// that is the collection contains the same values
+  if false {
 	sol_map := make(map[string]NumCol)
 	var del_queue []int
 	for i := 0; i < len(*item); i++ {
@@ -82,6 +83,7 @@ func (item *SolLst) RemoveDuplicates() {
 		*item = append(l1[:v], l1[v+1:]...)
 	}
 	//fmt.Printf("In Check, OrigLen %d, New Len %d\n",orig_len,len(*item))
+  }
 }
 func (item NumCol) TidyNumCol() {
 	for _, v := range item {

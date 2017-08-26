@@ -7,12 +7,12 @@ import (
 	"strconv"
 
 	"github.com/cbehopkins/countdown/cnt_slv"
-	"github.com/pkg/profile"
+//	"github.com/pkg/profile"
 )
 
 func main() {
 	// CPU profiling by default
-	defer profile.Start(profile.MemProfile).Stop()
+	//defer profile.Start(profile.MemProfile).Stop()
 
 	var target int
 	var proof_list cnt_slv.SolLst
@@ -84,12 +84,15 @@ func main() {
 		found_values.SeekShort = *srflg
 		return_proofs := found_values.CountHelper(target, sources)
 		for _ = range return_proofs {
-			//fmt.Println("Proof Received", v)
+			fmt.Println("Proof Received")
 		}
+    fmt.Println("Finished looking for proofs")
 		profString := found_values.GetProof(target)
 		fmt.Println("It's:", profString)
 	}
 	// TBD on seeks option add in tidy printing of the final solution
-	//found_values.PrintProofs()
+	if *tgflg==0 {
+    found_values.PrintProofs()
+  }
 
 }
