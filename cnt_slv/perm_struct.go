@@ -7,16 +7,70 @@ import (
 	"log"
 	"net"
 	"os"
-	"runtime"
 	"sync"
 
 	"github.com/cbehopkins/permutation"
 )
 
-type UmNetStruct struct {
+const (
+	LonMap = iota
+	FastMap
+	ParMap
+	NetMap
+)
+
+type umNetStruct struct {
 	UseMult    bool  `json:"mul"`
 	PostResult bool  `json:"post,omitempty"` // Postpone sending of the result
 	Val        []int `json:"int"`
+}
+type fastPermStruct struct {
+	p               *permutation.Permutator
+	numPermutations int
+	ch              chan Proofs
+	wg              *sync.WaitGroup
+}
+
+func newFastPermStruct(arrayIn NumCol, foundValues *NumMap) *fastPermStruct {
+	itm := new(fastPermStruct)
+	values := arrayIn.Values()
+	p, err := permutation.NewPerm(values, nil)
+	if err != nil {
+		fmt.Println(err)
+	}
+	itm.p = p
+	itm.ch = make(chan Proofs)
+	itm.wg = new(sync.WaitGroup)
+	itm.wg.Add(1)
+	go itm.Worker(foundValues)
+	return itm
+}
+func (ps *fastPermStruct) Work() {
+	p := ps.p
+	for result, err := p.Next(); err == nil; result, err = p.Next() {
+		bob, ok := result.([]int)
+		if !ok {
+			log.Fatalf("Error Type conversion problem\n")
+		}
+		inP := NewProofLstMany(bob)
+		// Get a data structure to put the result into
+		proofs := getProofs()
+		// Populate it
+		proofs.wrkFast(*inP)
+		// Now convert the result into something we can use
+		ps.ch <- proofs
+	}
+	close(ps.ch)
+	ps.wg.Wait()
+}
+
+// Worker pulls completed proofs off the channel
+// and stuffs them into the map
+func (fps fastPermStruct) Worker(fv *NumMap) {
+	for proofs := range fps.ch {
+		proofs.AddProofsNm(fv)
+	}
+	fps.wg.Done()
 }
 
 type permStruct struct {
@@ -93,6 +147,44 @@ func (ps *permStruct) workerPar(it NumCol, fv *NumMap) {
 	ps.mapMergeChan <- arthur
 	ps.coallateDone <- true
 }
+func (pr Proofs) AddProofsNm(fv *NumMap) {
+	for i, v := range pr {
+		proofTxt := v.String()
+		if proofTxt != "" {
+			numP := parseString(proofTxt)
+			if numP == nil {
+				log.Fatal("Failed to parse", proofTxt)
+			}
+			if numP.Val == i {
+				fv.Add(i, numP)
+			} else {
+				log.Fatal("Proved wrong value", i, numP.Val, proofTxt, numP)
+			}
+		}
+	}
+}
+func (it NumCol) CreatePl() *proofLst {
+	inP := NewProofLst(0)
+	for _, v := range it.Values() {
+		inP.Init(v)
+	}
+	return inP
+}
+func (ps *permStruct) workerFast(it NumCol, fv *NumMap) {
+	if !fv.Solved() {
+
+		inP := it.CreatePl()
+		// Get a data structure to put the result into
+		proofs := getProofs()
+		// Populate it
+		proofs.wrkFast(*inP)
+		// Now convert the result into something we can use
+		proofs.AddProofsNm(fv)
+
+	}
+	ps.coallateDone <- true
+	ps.channelTokens <- true
+}
 func (ps *permStruct) workerLone(it NumCol, fv *NumMap) {
 	if !fv.Solved() {
 		ps.coallateChan <- workN(it, fv, false)
@@ -117,7 +209,7 @@ func (ps *permStruct) workerNetSend(it NumCol, fv *NumMap) {
 	//////////
 	// Take our array of numbers (val_array)
 	// and turn them into an json request ready to send to the network
-	bob := UmNetStruct{Val: valArray, UseMult: useMult, PostResult: true}
+	bob := umNetStruct{Val: valArray, UseMult: useMult, PostResult: true}
 	text, err := json.Marshal(bob)
 	if err != nil {
 		fmt.Printf("Json Marshall error in worker_net_send: %v\n", err)
@@ -160,7 +252,7 @@ func (ps *permStruct) workerNetSend(it NumCol, fv *NumMap) {
 	ps.coallateDone <- true
 }
 func (ps *permStruct) workerNetClose(fv *NumMap) {
-	bob := UmNetStruct{PostResult: false}
+	bob := umNetStruct{PostResult: false}
 	text, err := json.Marshal(bob)
 	if err != nil {
 		fmt.Printf("Json Marshall error in worker_net_close: %v\n", err)
@@ -201,7 +293,7 @@ func (ps *permStruct) workerNetClose(fv *NumMap) {
 	parMerge.Wait()
 }
 
-func (pstrct *permStruct) setupConns(fv *NumMap) (extraTokens int, allFail bool) {
+func (ps *permStruct) setupConns(fv *NumMap) (extraTokens int, allFail bool) {
 	netSuccess := false
 
 	cwd, _ := os.Getwd()
@@ -227,7 +319,7 @@ func (pstrct *permStruct) setupConns(fv *NumMap) (extraTokens int, allFail bool)
 					fmt.Printf("Dial error: %v\n", err)
 				} else {
 					netSuccess = true
-					pstrct.netChannels <- conn
+					ps.netChannels <- conn
 					extraTokens++
 				}
 			}
@@ -244,39 +336,39 @@ func (pstrct *permStruct) setupConns(fv *NumMap) (extraTokens int, allFail bool)
 }
 
 // This little go function waits for all the procs to have a done channel and then closes the channel
-func (pstrct *permStruct) doneControl() {
-	for i := 0; i < pstrct.numPermutations; i++ {
-		<-pstrct.coallateDone
+func (ps *permStruct) doneControl() {
+	for i := 0; i < ps.numPermutations; i++ {
+		<-ps.coallateDone
 	}
-	if pstrct.permuteMode == NetMap {
+	if ps.permuteMode == NetMap {
 		// Send a message to all the channels to close them down
 		// and collect the results
 		//fmt.Println("all permutes finished, closing channels")
-		pstrct.workerNetClose(pstrct.fv)
+		ps.workerNetClose(ps.fv)
 		//fmt.Println("Network close finished")
 	}
-	close(pstrct.coallateChan)
-	close(pstrct.mapMergeChan)
-	pstrct.mwg.Done()
+	close(ps.coallateChan)
+	close(ps.mapMergeChan)
+	ps.mwg.Done()
 }
-func (pstrct *permStruct) Workers(proofList chan SolLst) {
+func (ps *permStruct) Workers(proofList chan SolLst) {
 	// Launch the thing what will actually do the work
-	go pstrct.Work()
-	pstrct.mwg.Add(2)
-	if pstrct.permuteMode == ParMap {
-		pstrct.mwg.Add(1)
-		go pstrct.mergeFuncWorker()
+	go ps.Work()
+	ps.mwg.Add(2)
+	if ps.permuteMode == ParMap {
+		ps.mwg.Add(1)
+		go ps.mergeFuncWorker()
 	}
 
 	// This will run until Work and workers it spawned are complete then Done mwg
-	go pstrct.doneControl()
+	go ps.doneControl()
 	// Thsi will if needed merge together the resuls and then Done mwg
-	go pstrct.outputMerge(proofList)
+	go ps.outputMerge(proofList)
 	// wait for all then Done on mwg
-	pstrct.Wait()
+	ps.Wait()
 }
-func (pstrct *permStruct) outputMerge(proofList chan SolLst) {
-	for v := range pstrct.coallateChan {
+func (ps *permStruct) outputMerge(proofList chan SolLst) {
+	for v := range ps.coallateChan {
 		v.RemoveDuplicates()
 		if proofList != nil {
 			proofList <- v
@@ -285,60 +377,65 @@ func (pstrct *permStruct) outputMerge(proofList chan SolLst) {
 	if proofList != nil {
 		close(proofList)
 	}
-	pstrct.mwg.Done()
+	ps.mwg.Done()
 }
-func (pstrct *permStruct) mergeFuncWorker() {
+func (ps *permStruct) mergeFuncWorker() {
 	mergeReport := false // Turn off reporting of new numbers for first run
-	for v := range pstrct.mapMergeChan {
-		pstrct.fv.Merge(v, mergeReport)
+	for v := range ps.mapMergeChan {
+		ps.fv.Merge(v, mergeReport)
 		mergeReport = true
 	}
-	pstrct.mwg.Done()
+	ps.mwg.Done()
 }
-func (pstrct *permStruct) Wait() {
-	pstrct.mwg.Wait()
+func (ps *permStruct) Wait() {
+	ps.mwg.Wait()
 }
-func (pstrct *permStruct) NumWorkers(cnt int) {
-	if pstrct.permuteMode == NetMap {
-		extraTokens, allFail := pstrct.setupConns(pstrct.fv)
+func (ps *permStruct) NumWorkers(cnt int) {
+	if ps.permuteMode == NetMap {
+		extraTokens, allFail := ps.setupConns(ps.fv)
 		cnt += extraTokens
 		if allFail {
-			pstrct.SetPM(LonMap)
+			ps.SetPM(FastMap)
 		}
 	}
 	for i := 0; i < cnt; i++ {
-		pstrct.channelTokens <- true
+		ps.channelTokens <- true
 	}
 }
-func (pstrct *permStruct) Launch(bob NumCol) {
-	if pstrct.permuteMode == ParMap {
-		go pstrct.workerPar(bob, pstrct.fv)
+func (ps *permStruct) Launch(bob NumCol) {
+
+	switch ps.permuteMode {
+	case ParMap:
+		go ps.workerPar(bob, ps.fv)
+	case LonMap:
+		go ps.workerLone(bob, ps.fv)
+	case NetMap:
+		go ps.workerNetSend(bob, ps.fv)
+	case FastMap:
+		go ps.workerFast(bob, ps.fv)
+	default:
+		log.Fatal("Unknown Permute Mode")
 	}
-	if pstrct.permuteMode == LonMap {
-		go pstrct.workerLone(bob, pstrct.fv)
-	}
-	if pstrct.permuteMode == NetMap {
-		go pstrct.workerNetSend(bob, pstrct.fv)
-	}
+
 }
-func (pstrct *permStruct) Work() {
-	p := pstrct.p
+func (ps *permStruct) Work() {
+	p := ps.p
 	for result, err := p.Next(); err == nil; result, err = p.Next() {
 		// To control the number of workers we run at once we need to grab a token
 		// remember to return it later
-		<-pstrct.channelTokens
-		fmt.Printf("%3d permutation: left %3d, GoRs %3d\r", p.Index()-1, p.Left(), runtime.NumGoroutine())
+		<-ps.channelTokens
+		//fmt.Printf("%3d permutation: left %3d, GoRs %3d\r", p.Index()-1, p.Left(), runtime.NumGoroutine())
 		bob, ok := result.(NumCol)
 		if !ok {
 			log.Fatalf("Error Type conversion problem")
 		}
-		pstrct.Launch(bob)
+		ps.Launch(bob)
 	}
 }
-func (pstrct *permStruct) SetPM(val int) {
-	pstrct.permuteMode = val
+func (ps *permStruct) SetPM(val int) {
+	ps.permuteMode = val
 }
-func RunPermute(arrayIn NumCol, foundValues *NumMap, proofList chan SolLst) {
+func runPermute(arrayIn NumCol, foundValues *NumMap, proofList chan SolLst) {
 	// If your number of workers is limited by access to the centralmap
 	// Then we have the ability to use several number maps and then merge them
 	// No system I have access to have enough CPUs for this to be an issue
@@ -353,6 +450,6 @@ func RunPermute(arrayIn NumCol, foundValues *NumMap, proofList chan SolLst) {
 }
 func permuteN(arrayIn NumCol, foundValues *NumMap) (proofList chan SolLst) {
 	returnProofs := make(chan SolLst, 16)
-	go RunPermute(arrayIn, foundValues, returnProofs)
+	go runPermute(arrayIn, foundValues, returnProofs)
 	return returnProofs
 }

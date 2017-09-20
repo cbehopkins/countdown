@@ -10,12 +10,16 @@ import (
 // It's also used for our top level config as it gets sent everywhere
 // There are also a bunch of helper functions surrpunding the map here
 // to efficiently and concisely extract the needed data
+
+// NumMapAtom is the structure that holds the Number itself
 type NumMapAtom struct {
 	a      int
 	b      *Number
 	report bool
 }
 
+// NumMap is the main map to a number and how we get there
+// This is the main structure the solver adds numbers to
 type NumMap struct {
 	mapLock   sync.RWMutex // The lock on nmp
 	nmp       map[int]*Number
@@ -35,6 +39,19 @@ type NumMap struct {
 	PermuteMode int
 }
 
+func (nmp *NumMap) Duplicate() *NumMap {
+	itm := NewNumMap()
+
+	itm.TargetSet = nmp.TargetSet
+	itm.Target = nmp.Target
+
+	itm.SeekShort = nmp.SeekShort
+	itm.UseMult = nmp.UseMult
+	itm.SelfTest = nmp.SelfTest
+	return itm
+}
+
+// NewNumMap creates a new number map
 func NewNumMap() *NumMap {
 	p := new(NumMap)
 	p.nmp = make(map[int]*Number)
@@ -43,14 +60,18 @@ func NewNumMap() *NumMap {
 	p.inputChannelArray = make(chan []NumMapAtom, 100)
 	p.doneChannel = make(chan bool)
 	p.TargetSet = false
-	go p.AddProc()
+	go p.addWorker()
 	return p
 }
+
+// Solved returns tru if the Target has been found
 func (nmp *NumMap) Solved() bool {
 	nmp.constLk.RLock()
 	defer nmp.constLk.RUnlock()
 	return *nmp.solved
 }
+
+// Keys returns the integers that form the numbers
 func (nmp *NumMap) Keys() []int {
 	retList := make([]int, len(nmp.nmp))
 	i := 0
@@ -60,6 +81,8 @@ func (nmp *NumMap) Keys() []int {
 	}
 	return retList
 }
+
+// Numbers returns a list of the numbers found
 func (nmp *NumMap) Numbers() []*Number {
 	retList := make([]*Number, len(nmp.nmp))
 	i := 0
@@ -70,11 +93,11 @@ func (nmp *NumMap) Numbers() []*Number {
 	return retList
 }
 
-func (ref *NumMap) Compare(can *NumMap) bool {
+// Compare two number maps return true if they contain the same numbers
+func (nmp *NumMap) Compare(can *NumMap) bool {
 	pass := true
-	// Compare two number maps return true if they contain the same numbers
 	for _, key := range can.Keys() {
-		_, ok := ref.nmp[key]
+		_, ok := nmp.nmp[key]
 		if !ok {
 			fmt.Printf("The value %d was in the candidate, but not the reference\n", key)
 			//return false
@@ -82,7 +105,7 @@ func (ref *NumMap) Compare(can *NumMap) bool {
 		}
 	}
 
-	for _, key := range ref.Keys() {
+	for _, key := range nmp.Keys() {
 		_, ok := can.nmp[key]
 		if !ok {
 			fmt.Printf("The value %d was in the reference, but not the candidate\n", key)
@@ -92,7 +115,8 @@ func (ref *NumMap) Compare(can *NumMap) bool {
 	}
 	return pass
 }
-func (nm *NumMap) NewPoolI(numToMake int) NumCol {
+
+func (nmp *NumMap) acquireNumbers(numToMake int) NumCol {
 	poolNum := make([]Number, numToMake)
 	poolPnt := make([]*Number, numToMake)
 	for i := range poolNum {
@@ -102,18 +126,19 @@ func (nm *NumMap) NewPoolI(numToMake int) NumCol {
 	return poolPnt
 }
 
-func (nm *NumMap) acquireNumbers(numToMake int) NumCol {
-	return nm.NewPoolI(numToMake)
-}
-
-func (item *NumMap) Add(a int, b *Number) {
+// Add a number we have found
+// and how we found it
+func (nmp *NumMap) Add(a int, b *Number) {
 	var atomic NumMapAtom
 	atomic.a = b.Val
 	atomic.b = b
 	atomic.report = false
-	item.inputChannel <- atomic
+	nmp.inputChannel <- atomic
 }
-func (item *NumMap) AddMany(b ...*Number) {
+
+// addMany allows adding several number at once
+// It only takes a single lock to do a number of items
+func (nmp *NumMap) addMany(b ...*Number) {
 	arr := make([]NumMapAtom, len(b))
 	for i, c := range b {
 		var atomic NumMapAtom
@@ -122,22 +147,26 @@ func (item *NumMap) AddMany(b ...*Number) {
 		atomic.report = false
 		arr[i] = atomic
 	}
-	item.inputChannelArray <- arr
+	nmp.inputChannelArray <- arr
 }
 
-func (item *NumMap) AddSol(a SolLst, report bool) {
-	item.mapLock.Lock()
-	item.constLk.RLock()
+// addSol adds a solution to the map
+func (nmp *NumMap) addSol(a SolLst, report bool) {
+	nmp.mapLock.Lock()
+	nmp.constLk.RLock()
 	for _, b := range a {
 		for _, c := range b {
 			//fmt.Println("Ading Value:", c.Val)
-			item.addItem(c.Val, c, false)
+			nmp.addItem(c.Val, c, false)
 		}
 	}
-	item.constLk.RUnlock()
-	item.mapLock.Unlock()
+	nmp.constLk.RUnlock()
+	nmp.mapLock.Unlock()
 }
-func (item *NumMap) Merge(a *NumMap, report bool) {
+
+// Merge allows you to merge two number maps together
+// This is useful for parallel workers
+func (nmp *NumMap) Merge(a *NumMap, report bool) {
 	a.mapLock.Lock()
 	tmpCol := make(NumCol, len(a.nmp))
 	i := 0
@@ -147,98 +176,108 @@ func (item *NumMap) Merge(a *NumMap, report bool) {
 	}
 	a.mapLock.Unlock()
 	tmpSol := SolLst{tmpCol}
-	item.AddSol(tmpSol, report)
+	nmp.addSol(tmpSol, report)
 }
 
-func (item *NumMap) addItem(value int, stct *Number, report bool) {
+func (nmp *NumMap) addItem(value int, stct *Number, report bool) {
 	// The lock on the map structure must be grabbed outside
-	retr, ok := item.nmp[value]
+	retr, ok := nmp.nmp[value]
 	if !ok {
 		//item.nmp[value] = stct
-		if item.TargetSet {
-			if value == item.Target {
+		if nmp.TargetSet {
+			if value == nmp.Target {
 				// Store the solution we found
-				item.nmp[value] = stct
+				nmp.nmp[value] = stct
 
 				//proof_string := stct.String()
 				//fmt.Printf("Value %d, = %s, Proof Len is %d, Difficulty is %d\n", value, proof_string, stct.ProofLen(), stct.difficulty)
 				// Seeking the shortest, means run every combination we can
-				if !item.SeekShort {
-					item.constLk.RUnlock()
-					item.constLk.Lock()
-					*item.solved = true
-					item.constLk.Unlock()
-					item.constLk.RLock()
+				if !nmp.SeekShort {
+					nmp.constLk.RUnlock()
+					nmp.constLk.Lock()
+					*nmp.solved = true
+					nmp.constLk.Unlock()
+					nmp.constLk.RLock()
 				}
-				fmt.Println("Set Solved sucessfully")
+				//fmt.Println("Set Solved sucessfully")
 			}
 		} else {
 			// When there is no target, the we care about every solution
-			item.nmp[value] = stct
+			nmp.nmp[value] = stct
 		}
-	} else if item.SeekShort && (retr.difficulty > stct.difficulty) {
+	} else if nmp.SeekShort && (retr.difficulty > stct.difficulty) {
 		// In seek short mode, then update when it has a shorter proof
-		item.nmp[value] = stct
+		nmp.nmp[value] = stct
 	}
 }
-func (item *NumMap) AddProc() {
+
+// Add worker is the worker func
+// that receives numbers on the channels and adds them to the map
+func (nmp *NumMap) addWorker() {
 	waiter := new(sync.WaitGroup)
 	waiter.Add(2)
 	go func() {
-		for fred := range item.inputChannelArray {
-			item.mapLock.Lock()
-			item.constLk.RLock()
+		for fred := range nmp.inputChannelArray {
+			nmp.mapLock.Lock()
+			nmp.constLk.RLock()
 			for _, bob := range fred {
-				item.addItem(bob.a, bob.b, false)
+				nmp.addItem(bob.a, bob.b, false)
 			}
-			item.constLk.RUnlock()
-			item.mapLock.Unlock()
+			nmp.constLk.RUnlock()
+			nmp.mapLock.Unlock()
 		}
 		waiter.Done()
 	}()
 	go func() {
-		for bob := range item.inputChannel {
-			item.mapLock.Lock()
-			item.constLk.RLock()
-			item.addItem(bob.a, bob.b, false)
-			item.constLk.RUnlock()
-			item.mapLock.Unlock()
+		for bob := range nmp.inputChannel {
+			nmp.mapLock.Lock()
+			nmp.constLk.RLock()
+			nmp.addItem(bob.a, bob.b, false)
+			nmp.constLk.RUnlock()
+			nmp.mapLock.Unlock()
 		}
 		waiter.Done()
 	}()
 	waiter.Wait()
-	close(item.doneChannel)
+	close(nmp.doneChannel)
 
 }
-func (item *NumMap) GetVals() []int {
-	retList := make([]int, len(item.nmp))
+
+// GetVals returns all the possible numbers we have found
+func (nmp *NumMap) GetVals() []int {
+	retList := make([]int, len(nmp.nmp))
 	i := 0
-	for _, v := range item.nmp {
-		//fmt.Printf("v:%d,%d\n",i, v.Val);
+	for _, v := range nmp.nmp {
 		retList[i] = v.Val
 		i++
 	}
 	return retList
 }
 
-func (item *NumMap) LastNumMap() {
-	//fmt.Println("Closing input_channel")
-	close(item.inputChannelArray)
-	close(item.inputChannel)
-	<-item.doneChannel
+// LastNumMap says we have done adding numbers
+// Should be internal use only - REVISIT
+func (nmp *NumMap) LastNumMap() {
+	close(nmp.inputChannelArray)
+	close(nmp.inputChannel)
+	<-nmp.doneChannel
 }
-func (item *NumMap) SetTarget(target int) {
-	//fmt.Println("Setting target to ", target)
-	item.constLk.Lock()
-	item.TargetSet = true
-	item.Target = target
-	item.constLk.Unlock()
+
+// SetTarget for the search
+// Failing to set this means all permutations will always run
+func (nmp *NumMap) SetTarget(target int) {
+	nmp.constLk.Lock()
+	nmp.TargetSet = true
+	nmp.Target = target
+	nmp.constLk.Unlock()
 }
-func (item *NumMap) PrintProofs() {
+
+// PrintProofs prints all of the proofs
+// we have found across all runs on this map
+func (nmp *NumMap) PrintProofs() {
 	minNum := 1000
 	maxNum := 0
 	numNum := 0
-	for _, v := range item.nmp {
+	for _, v := range nmp.nmp {
 		// w is *Number
 		var Value int
 		Value = v.Val
@@ -251,7 +290,7 @@ func (item *NumMap) PrintProofs() {
 		}
 	}
 	for i := minNum; i <= maxNum; i++ {
-		Value, ok := item.nmp[i]
+		Value, ok := nmp.nmp[i]
 		if ok && (i < 1000) {
 			proofString := Value.String()
 			fmt.Printf("Value %d, = %s, difficulty = %d\n", Value.Val, proofString, Value.difficulty)
@@ -259,11 +298,12 @@ func (item *NumMap) PrintProofs() {
 	}
 	fmt.Printf("There are:\n%d Numbers\nMin:%4d Max:%4d\n", numNum, minNum, maxNum)
 }
-func (item *NumMap) GetProof(target int) string {
-	val, ok := item.nmp[target]
+
+// GetProof returns a specific proof for a target
+func (nmp *NumMap) GetProof(target int) string {
+	val, ok := nmp.nmp[target]
 	if ok {
 		return val.String()
-	} else {
-		return "No Proof Found"
 	}
+	return "No Proof Found"
 }

@@ -91,8 +91,6 @@ func tstWorker(fc func(NumCol, *NumMap)) {
 	foundValues.SetTarget(target)
 
 	fc(mk400, foundValues)
-	//sol_combined := work_n(mk400, found_values, false)
-	//return sol_combined
 }
 
 func TestWorkn(t *testing.T) {
@@ -101,7 +99,10 @@ func TestWorkn(t *testing.T) {
 		tmp = workN(nc, fv, false)
 	}
 	tstWorker(fun)
-	log.Println("Find 727", tmp.StringNum(727))
+	if !tmp.Exists(727) {
+		log.Fatal("Couldn't find 727")
+	}
+
 }
 func TestPermute(t *testing.T) {
 	var tmpChan chan SolLst
@@ -109,7 +110,19 @@ func TestPermute(t *testing.T) {
 		tmpChan = permuteN(nc, fv)
 	}
 	tstWorker(fun)
+	var found bool
+	var unfound bool
 	for tmp := range tmpChan {
-		log.Println("Find 727", tmp.StringNum(727))
+		if !tmp.Exists(727) {
+			unfound = true
+		} else {
+			found = true
+		}
+	}
+	if !found {
+		log.Fatal("There should be at least on permutation where it is found")
+	}
+	if !unfound {
+		log.Fatal("There should be at least on permutation where it is unfound")
 	}
 }

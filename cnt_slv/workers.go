@@ -11,20 +11,15 @@ import (
 // all possible combinations
 // and then taking these combinations and devolving them into smaller sets
 // that can be worked on in turn
-const (
-	LonMap = iota
-	ParMap
-	NetMap
-)
 
-func WorkN(arrayIn NumCol, foundValues *NumMap) SolLst {
-	for _, j := range arrayIn {
-		if j.Val == 0 {
-			log.Fatal("WorkN fed a 0 number")
-		}
-	}
-	return workN(arrayIn, foundValues, false)
-}
+//func WorkN(arrayIn NumCol, foundValues *NumMap) SolLst {
+//	for _, j := range arrayIn {
+//		if j.Val == 0 {
+//			log.Fatal("WorkN fed a 0 number")
+//		}
+//	}
+//	return workN(arrayIn, foundValues, false)
+//}
 
 func workN(arrayIn NumCol, foundValues *NumMap, multipass bool) SolLst {
 	var retList SolLst
@@ -38,7 +33,7 @@ func workN(arrayIn NumCol, foundValues *NumMap, multipass bool) SolLst {
 	} else if lenArrayIn == 2 {
 		var tmpList NumCol
 		tmpList = foundValues.make2To1(arrayIn[0:2])
-		foundValues.AddMany(tmpList...)
+		foundValues.addMany(tmpList...)
 		retList = append(retList, tmpList, arrayIn)
 		return retList
 	}
@@ -54,8 +49,7 @@ func workN(arrayIn NumCol, foundValues *NumMap, multipass bool) SolLst {
 	// we then take each value in this list and work that to get {{9},{3}}
 	// the final list we want to return is {{5,4}, {1,4}, {9},{3}}
 	// the reason to not return {2,3,4} is so that in the grand scheme of things we can recurse these lists
-	var workList WrkLst
-	workList = NewWrkLst(arrayIn)
+	workList := NewWrkLst(arrayIn)
 	// so by this stage we have something like {{{2},{3,4}}} or for a 4 variable: { {{2}, {3,4,5}}, {{2,3},{4,5}} }
 
 	if multipass {
@@ -147,13 +141,13 @@ func workN(arrayIn NumCol, foundValues *NumMap, multipass bool) SolLst {
 
 			var tmpList NumCol
 			tmpList = foundValues.make2To1(bobList)
-			foundValues.AddMany(tmpList...)
+			foundValues.addMany(tmpList...)
 			retList = append(retList, tmpList, arrayIn)
 			return true
 		}
 		workList.procWork(foundValues, workerFunc)
 	}
 	// Add the entire solution list found in the previous loop in one go
-	foundValues.AddSol(retList, false)
+	foundValues.addSol(retList, false)
 	return retList
 }

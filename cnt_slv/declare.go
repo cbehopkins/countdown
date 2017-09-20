@@ -16,6 +16,14 @@ import (
 type NumCol []*Number
 type SolLst []NumCol
 
+func (nc NumCol) Values() []int {
+	retInts := make([]int, len(nc))
+	for i, v := range nc {
+		retInts[i] = v.Val
+	}
+	return retInts
+}
+
 func (foundValues *NumMap) CountHelper(target int, sources []int) chan SolLst {
 
 	// Create a list of the input sources

@@ -44,21 +44,21 @@ func (wl WrkLst) procWork(foundValues *NumMap, wf func(a, b *Number) bool) {
 	}
 }
 
+// NewWrkLst returns a new work list from a Number Collection
+// Easier to explain by example:
+// {2,3,4} -> {{2},{3,4}}
+// {2,3,4,5} -> {{2}, {3,4,5}}
+//           -> {{2,3},{4,5}}
+// {2,3,4,5,6} -> {{2},{3,4,5,6}}
+//             -> {{2,3},{4,5,6}}
+//             -> {{2,3,4},{5,6}}
+// The consumer of this list of list (of list) will then feed each list length >1 into a the work+_n function
+// In order to get down to a {{a},{b}} which can then be worked
+// The important point is that even though the list we return may be indefinitly long
+// each work unit within it is then a smaller unit
+// so an input array of 3 numbers only generates work units that contain number lists of length 2 or less
 func NewWrkLst(arrayA NumCol) WrkLst {
 	var workList []SolLst
-	// Easier to explain by example:
-	// {2,3,4} -> {{2},{3,4}}
-	// {2,3,4,5} -> {{2}, {3,4,5}}
-	//           -> {{2,3},{4,5}}
-	// {2,3,4,5,6} -> {{2},{3,4,5,6}}
-	//             -> {{2,3},{4,5,6}}
-	//             -> {{2,3,4},{5,6}}
-
-	// The consumer of this list of list (of list) will then feed each list length >1 into a the work+_n function
-	// In order to get down to a {{a},{b}} which can then be worked
-	// The important point is that even though the list we return may be indefinitly long
-	// each work unit within it is then a smaller unit
-	// so an input array of 3 numbers only generates work units that contain number lists of length 2 or less
 
 	lenArrayM1 := arrayA.Len() - 1
 
@@ -78,13 +78,19 @@ func NewWrkLst(arrayA NumCol) WrkLst {
 	}
 	return WrkLst{lst: workList}
 }
+
+// Len returns the length of the worklist
 func (wl WrkLst) Len() int {
 	return len(wl.lst)
 }
 
+// Get a specific item off the worklist
 func (wl WrkLst) Get(itm int) SolLst {
 	return wl.lst[itm]
 }
+
+// Last retrieves the last item
+// This contains the sources that started this list
 func (wl WrkLst) Last() SolLst {
 	return wl.Get(wl.Len() - 1)
 }

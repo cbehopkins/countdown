@@ -38,14 +38,14 @@ func lessNumber(i, j interface{}) bool {
 	v2 := tmp.Val
 	return v1 < v2
 }
-func (num *Number) configure(inputA int, inputB []*Number, operation string, difficult int) {
-	num.Val = inputA
+func (i *Number) configure(inputA int, inputB []*Number, operation string, difficult int) {
+	i.Val = inputA
 
-	num.list = inputB
-	num.operation = operation
-	num.difficulty = difficult
+	i.list = inputB
+	i.operation = operation
+	i.difficulty = difficult
 	for _, v := range inputB {
-		num.difficulty = num.difficulty + v.difficulty
+		i.difficulty = i.difficulty + v.difficulty
 	}
 
 }

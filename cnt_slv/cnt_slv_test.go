@@ -2,12 +2,13 @@ package cntSlv
 
 import (
 	"fmt"
-	"github.com/pkg/profile"
 	"math/rand"
-	"runtime"
+	"strconv"
 
 	"sync"
 	"testing"
+
+	"github.com/pkg/profile"
 )
 
 type testset struct {
@@ -42,11 +43,11 @@ func initMany() []testset {
 }
 
 func TestOne(t *testing.T) {
-	defer profile.Start().Stop()
+	//defer profile.Start().Stop()
 	//defer profile.Start(profile.MemProfile).Stop()
 	var target int
-	//target = 78
-	target = 531000
+	target = 78
+	//target = 531000
 
 	var proofList SolLst
 	var bob NumCol
@@ -54,7 +55,7 @@ func TestOne(t *testing.T) {
 
 	foundValues.SelfTest = true
 	foundValues.UseMult = true
-	foundValues.PermuteMode = NetMap
+	foundValues.PermuteMode = LonMap
 	bob.AddNum(8, foundValues)
 	bob.AddNum(9, foundValues)
 	bob.AddNum(10, foundValues)
@@ -87,7 +88,7 @@ func TestOne(t *testing.T) {
 
 	} else {
 		t.Log("Couldn't solve")
-		//fmt.Println(proof_list)
+		fmt.Println(proofList)
 		foundValues.PrintProofs()
 		t.Fail()
 	}
@@ -97,7 +98,7 @@ func TestOne(t *testing.T) {
 }
 
 func TestMany(t *testing.T) {
-	defer profile.Start(profile.MemProfile).Stop()
+	//defer profile.Start(profile.MemProfile).Stop()
 	testSet := initMany()
 	for _, item := range testSet {
 		proofList := *new(SolLst)
@@ -105,8 +106,10 @@ func TestMany(t *testing.T) {
 		foundValues := NewNumMap() //pass it the proof list so it can auto-check for validity at the end
 		foundValues.SelfTest = true
 		foundValues.UseMult = true
-		foundValues.PermuteMode = rand.Intn(3) // Select a random mode
-
+		foundValues.PermuteMode = FastMap
+		// Other permute modes just use too much memory
+		//foundValues.PermuteMode = rand.Intn(2) // Select a random mode
+		//fmt.Println("Running with permute mode", foundValues.PermuteMode)
 		for _, itm := range item.Selected {
 			bob.AddNum(itm, foundValues)
 		}
@@ -130,21 +133,12 @@ func TestMany(t *testing.T) {
 		}
 		if foundValues.Solved() {
 			t.Log("Proof Found")
-
 		} else {
 			t.Log("Couldn't solve")
 			t.Log(proofList)
 			t.Fail()
 		}
 	}
-	//	if false {
-	//		f, err := os.Create("memprofile.prof")
-	//		if err != nil {
-	//			log.Fatal(err)
-	//		}
-	//		pprof.WriteHeapProfile(f)
-	//		f.Close()
-	//	}
 }
 func initFailMany() []testset {
 	retLst := make([]testset, 0, 7)
@@ -155,7 +149,7 @@ func initFailMany() []testset {
 }
 
 func TestFail(t *testing.T) {
-	defer profile.Start(profile.MemProfile).Stop()
+	//defer profile.Start(profile.MemProfile).Stop()
 
 	testSet := initFailMany()
 	for _, item := range testSet {
@@ -164,7 +158,8 @@ func TestFail(t *testing.T) {
 		foundValues := NewNumMap() //pass it the proof list so it can auto-check for validity at the end
 		foundValues.SelfTest = false
 		foundValues.UseMult = true
-
+		// Other modes use too much memory
+		foundValues.PermuteMode = FastMap
 		for _, itm := range item.Selected {
 			bob.AddNum(itm, foundValues)
 		}
@@ -197,9 +192,6 @@ func TestFail(t *testing.T) {
 	}
 }
 func TestIt(t *testing.T) {
-	//var target int
-	//target = 78
-
 	var proofList SolLst
 	var bob NumCol
 	foundValues := NewNumMap() //pass it the proof list so it can auto-check for validity at the end
@@ -212,9 +204,6 @@ func TestIt(t *testing.T) {
 	bob.AddNum(10, foundValues)
 	bob.AddNum(75, foundValues)
 	bob.AddNum(25, foundValues)
-	//bob.AddNum(100, found_values)
-
-	//found_values.SetTarget(target)
 
 	proofList = append(proofList, bob) // Add on the work item that is the source
 
@@ -233,6 +222,8 @@ func TestIt(t *testing.T) {
 	}
 }
 func TestReduction(t *testing.T) {
+	// Now we are using fast worker, this test does not apply
+
 	var proofList0 SolLst
 	var proofList1 SolLst
 	var bob0 NumCol
@@ -296,70 +287,130 @@ func TestReduction(t *testing.T) {
 	foundValues2.SelfTest = true
 	foundValues2.UseMult = true
 
-	foundValues2.AddSol(proofList0, false)
+	foundValues2.addSol(proofList0, false)
 	foundValues2.LastNumMap()
 	if foundValues2.Compare(foundValues0) {
 	} else {
 		fmt.Println("The new FV were different")
 		t.Fail()
 	}
-
-	//found_values0.PrintProofs()
 }
-
-func BenchmarkWorknMulti(b *testing.B) {
-
-	for i := 0; i < b.N; i++ {
-		b.StopTimer()
-		foundValues := NewNumMap()
-		foundValues.SelfTest = true
-		foundValues.UseMult = true
-		var bob NumCol
-		nuMap := make(map[int]struct{})
-		for j := 0; j < 6; j++ {
-			run := true
-			var k int
-			for run {
-				k = rand.Intn(100)
-				if k > 0 {
-					_, run = nuMap[k] // If it exists generate anther
-					nuMap[k] = struct{}{}
-				}
+func randomNumMap(cnt int) (*NumMap, NumCol) {
+	foundValues := NewNumMap()
+	foundValues.SelfTest = true
+	foundValues.UseMult = true
+	var bob NumCol
+	nuMap := make(map[int]struct{})
+	for j := 0; j < 4; j++ {
+		run := true
+		var k int
+		for run {
+			k = rand.Intn(100)
+			if k > 0 {
+				_, run = nuMap[k] // If it exists generate anther
+				nuMap[k] = struct{}{}
 			}
-			bob.AddNum(k, foundValues)
 		}
-		target := rand.Intn(1000)
-		foundValues.SetTarget(target)
-		runtime.GC()
-		b.StartTimer()
-		workN(bob, foundValues, true)
+		bob.AddNum(k, foundValues)
+	}
+	return foundValues, bob
+}
+func BenchmarkWorknMulti(b *testing.B) {
+	foundValues, bob := randomNumMap(6)
+	parModes := []bool{true, false}
+	for _, parMode := range parModes {
+		runFunc := func(tb *testing.B) {
+			for i := 0; i < tb.N; i++ {
+				tb.StopTimer()
+				fv := foundValues.Duplicate()
+				tb.StartTimer()
+				workN(bob, fv, parMode)
+			}
+		}
+		runString := ""
+		if parMode {
+			runString += "par"
+		}
+		b.Run(runString, runFunc)
 	}
 }
-func BenchmarkWorknSingle(b *testing.B) {
+func ModeString(v int) string {
+	switch v {
+	case LonMap:
+		return "LonMap"
+	case FastMap:
+		return "FstMap"
+	case ParMap:
+		return "ParMap"
+	case NetMap:
+		return "NetMap"
+	default:
+		return "unknown"
+	}
 
-	for i := 0; i < b.N; i++ {
-		b.StopTimer()
-		foundValues := NewNumMap()
-		foundValues.SelfTest = true
-		foundValues.UseMult = true
-		var bob NumCol
-		nuMap := make(map[int]struct{})
-		for j := 0; j < 6; j++ {
-			run := true
-			var k int
-			for run {
-				k = rand.Intn(100)
-				if k > 0 {
-					_, run = nuMap[k] // If it exists generate anther
-					nuMap[k] = struct{}{}
+}
+func BenchmarkModes(b *testing.B) {
+	for _, MapLength := range []int{4, 5, 6} {
+		foundValues, bob := randomNumMap(MapLength)
+		for _, parMode := range []int{0, 1, 2} {
+			for _, numWorkers := range []int{1, 2, 4, 16, 64} {
+				runFunc := func(tb *testing.B) {
+					for i := 0; i < tb.N; i++ {
+						tb.StopTimer()
+						fv := foundValues.Duplicate()
+						pstrct := newPermStruct(bob, fv)
+						pstrct.SetPM(parMode)
+						requiredTokens := numWorkers
+						pstrct.NumWorkers(requiredTokens)
+						tb.StartTimer()
+						pstrct.Workers(nil)
+						fv.LastNumMap()
+					}
 				}
+				runString := "PM:"
+				runString += ModeString(parMode)
+				runString += "_Nw" + strconv.Itoa(numWorkers)
+				runString += "_Ml" + strconv.Itoa(MapLength)
+				b.Run(runString, runFunc)
 			}
-			bob.AddNum(k, foundValues)
 		}
-		target := rand.Intn(1000)
-		foundValues.SetTarget(target)
-		runtime.GC()
-		b.StartTimer()
-		workN(bob, foundValues, false)
+	}
+}
+func TestFps(t *testing.T) {
+	defer profile.Start().Stop()
+	for _, MapLength := range []int{4, 5, 6} {
+		foundValues, bob := randomNumMap(MapLength)
+		runFunc := func(tb *testing.T) {
+			for i := 0; i < 20; i++ {
+				//tb.StopTimer()
+				fv := foundValues.Duplicate()
+				pstrct := newFastPermStruct(bob, fv)
+				//tb.StartTimer()
+				pstrct.Work()
+				fv.LastNumMap()
+			}
+		}
+		runString := ""
+		runString += "Ml" + strconv.Itoa(MapLength)
+		t.Run(runString, runFunc)
+	}
+}
+func BenchmarkFps(b *testing.B) {
+	defer profile.Start().Stop()
+	for _, MapLength := range []int{4, 5, 6} {
+		foundValues, bob := randomNumMap(MapLength)
+		runFunc := func(tb *testing.B) {
+			for i := 0; i < tb.N; i++ {
+				tb.StopTimer()
+				fv := foundValues.Duplicate()
+				pstrct := newFastPermStruct(bob, fv)
+				tb.StartTimer()
+				pstrct.Work()
+				fv.LastNumMap()
+			}
+		}
+		runString := ""
+		runString += "Ml" + strconv.Itoa(MapLength)
+		b.Run(runString, runFunc)
 	}
 }
