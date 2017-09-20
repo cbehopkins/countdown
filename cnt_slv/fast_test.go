@@ -186,6 +186,7 @@ func ExampleWrkFastSplit() {
 	inP.Init(8)
 	resP := wrkFastSplit(*inP)
 	fmt.Println("Res:", resP)
+	putProofListArray(resP)
 	//Output:
 	// Res: [{2->2} {4->4,6->6,8->8} {2->2,4->4} {6->6,8->8} {2->2,4->4,6->6} {8->8}]
 }
@@ -262,15 +263,11 @@ func TestDecompose1(t *testing.T) {
 	proofs := getProofs()
 	proofs.wrkFast(*inP)
 	for i, pr := range proofs {
-		inString := pr.String()
-		if inString != "" {
-			derNum := parseString(inString)
-			if derNum == nil {
-				log.Fatal("Nil result for:", inString)
-			}
+		derNum := pr.parseProof()
+		if derNum != nil {
 			dv := derNum.calculate()
 			if dv != i {
-				log.Fatal("Wrong Value", inString, i, dv)
+				log.Fatal("Wrong Value", pr, i, dv)
 			}
 		}
 	}

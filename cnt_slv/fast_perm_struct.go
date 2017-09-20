@@ -16,8 +16,16 @@ type fastPermStruct struct {
 }
 
 func newFastPermStruct(arrayIn NumCol, foundValues *NumMap) *fastPermStruct {
-	itm := new(fastPermStruct)
+
 	values := arrayIn.Values()
+	itm := NewFastPermInt(values)
+	go itm.Worker(foundValues)
+	return itm
+}
+
+// NewFastPermInt good way to generate proofs
+func NewFastPermInt(values []int) *fastPermStruct {
+	itm := new(fastPermStruct)
 	p, err := permutation.NewPerm(values, nil)
 	if err != nil {
 		fmt.Println(err)
@@ -26,12 +34,13 @@ func newFastPermStruct(arrayIn NumCol, foundValues *NumMap) *fastPermStruct {
 	itm.ch = make(chan Proofs)
 	itm.wg = new(sync.WaitGroup)
 	itm.wg.Add(1)
-	go itm.Worker(foundValues)
 	return itm
 }
-func (ps *fastPermStruct) Work() {
+
+func (ps *fastPermStruct) Work(target int) {
 	p := ps.p
-	for result, err := p.Next(); err == nil; result, err = p.Next() {
+	targetFound := false
+	for result, err := p.Next(); (err == nil) && (!targetFound); result, err = p.Next() {
 		bob, ok := result.([]int)
 		if !ok {
 			log.Fatalf("Error Type conversion problem\n")
@@ -41,8 +50,14 @@ func (ps *fastPermStruct) Work() {
 		proofs := getProofs()
 		// Populate it
 		proofs.wrkFast(*inP)
-		// Now convert the result into something we can use
-		ps.ch <- proofs
+		if target > 0 {
+			targetFound = proofs.Exists(target)
+			if targetFound {
+				ps.ch <- proofs
+			}
+		} else {
+			ps.ch <- proofs
+		}
 	}
 	close(ps.ch)
 	ps.wg.Wait()
@@ -55,4 +70,12 @@ func (ps fastPermStruct) Worker(fv *NumMap) {
 		proofs.addProofsNm(fv)
 	}
 	ps.wg.Done()
+}
+func (ps fastPermStruct) GetProofs(target int) Proofs {
+	itm := getProofs()
+	go ps.Work(target)
+	for newPr := range ps.ch {
+		itm.merge(newPr)
+	}
+	return itm
 }

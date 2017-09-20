@@ -42,25 +42,25 @@ func lessNumber(i, j interface{}) bool {
 	v2 := tmp.Val
 	return v1 < v2
 }
-func (i *Number) configure(inputA int, inputB []*Number, operation string, difficult int) {
-	i.Val = inputA
+func (nm *Number) configure(inputA int, inputB []*Number, operation string, difficult int) {
+	nm.Val = inputA
 
-	i.list = inputB
-	i.operation = operation
-	i.difficulty = difficult
+	nm.list = inputB
+	nm.operation = operation
+	nm.difficulty = difficult
 	for _, v := range inputB {
-		i.difficulty = i.difficulty + v.difficulty
+		nm.difficulty = nm.difficulty + v.difficulty
 	}
 
 }
 
 //ProofLen returns the length of a proof
-func (i *Number) ProofLen() int {
+func (nm *Number) ProofLen() int {
 	var cumlen int
-	if i.list == nil {
+	if nm.list == nil {
 		cumlen = 1
 	} else {
-		for _, v := range i.list {
+		for _, v := range nm.list {
 			cumlen += v.ProofLen()
 		}
 	}
@@ -75,36 +75,36 @@ func (i *Number) ProofLen() int {
 // Here's what our operands say
 // a-b == b--a
 // a/b == b\\a
-func (i *Number) TidyDoubles() {
+func (nm *Number) TidyDoubles() {
 
-	if (i.list == nil) || (len(i.list) == 0) {
+	if (nm.list == nil) || (len(nm.list) == 0) {
 		return
 	}
 
-	for _, v := range i.list {
+	for _, v := range nm.list {
 		v.TidyDoubles()
 	}
 
-	if i.operation == "--" {
-		if len(i.list) != 2 {
+	if nm.operation == "--" {
+		if len(nm.list) != 2 {
 			log.Fatal("can't process -- on a list that is anything but 2 long")
 		}
 
-		i.operation = "-"
-	} else if i.operation == "\\" {
-		if len(i.list) != 2 {
+		nm.operation = "-"
+	} else if nm.operation == "\\" {
+		if len(nm.list) != 2 {
 			log.Fatal("can't process \\ on a list that is anything but 2 long")
 		}
 
-		i.operation = "/"
+		nm.operation = "/"
 	} else {
 		// Must not be a double operator
 		return
 	}
-	i.list = NumCol{i.list[1], i.list[0]}
+	nm.list = NumCol{nm.list[1], nm.list[0]}
 	return
 }
-func (i *Number) tidyOperators() {
+func (nm *Number) tidyOperators() {
 	// This one is sexy
 	// we often in our proofs get things like:
 	// (((1+2)+3)+(4/2)) or
@@ -144,31 +144,31 @@ func (i *Number) tidyOperators() {
 	// But of course the first thing we want is for their house to be in order
 	tmpList := make([]*Number, 0, 4) // CBH get this from the centra allocator
 	listModified := false
-	for _, v := range i.list {
+	for _, v := range nm.list {
 		v.tidyOperators()
 		// Let's just combine +s for now
-		if (i.operation == "+") && (v.operation == "+") {
-			i.difficulty = i.difficulty + v.difficulty
+		if (nm.operation == "+") && (v.operation == "+") {
+			nm.difficulty = nm.difficulty + v.difficulty
 			tmpList = append(tmpList, v.list...)
 			listModified = true
-		} else if (i.operation == "*") && (v.operation == "*") {
+		} else if (nm.operation == "*") && (v.operation == "*") {
 			tmpList = append(tmpList, v.list...)
-			i.difficulty = i.difficulty + v.difficulty
+			nm.difficulty = nm.difficulty + v.difficulty
 			listModified = true
 		} else {
 			tmpList = append(tmpList, v)
 		}
 	}
 	if listModified {
-		i.list = tmpList
+		nm.list = tmpList
 	}
 
-	if (i.operation == "-") && (len(i.list) == 2) {
+	if (nm.operation == "-") && (len(nm.list) == 2) {
 		// Play it safe and check first, work out optimisation later
-		if (i.list[0].operation == "-") && (i.list[1].operation == "-") {
+		if (nm.list[0].operation == "-") && (nm.list[1].operation == "-") {
 			// Fill in this later optimisaton
 			// basically turn (a-b)-(c-d) -> (a+d)-(b+c)
-		} else if i.list[0].operation == "-" {
+		} else if nm.list[0].operation == "-" {
 			// Transform (a-b)-c -> a-(b+c)
 			// in this terminology
 			// a = i.list[0].list[0]
@@ -176,19 +176,19 @@ func (i *Number) tidyOperators() {
 			// c = i.list[1]
 			// create b+c
 			myList0 := make([]*Number, 2)
-			myList0[0] = i.list[1]
-			myList0[1] = i.list[0].list[1]
+			myList0[0] = nm.list[1]
+			myList0[1] = nm.list[0].list[1]
 
-			bPlusC := NewNumber((i.list[1].Val + i.list[0].list[1].Val), myList0, "+", (i.list[1].difficulty + i.list[0].list[1].difficulty + 1))
+			bPlusC := NewNumber((nm.list[1].Val + nm.list[0].list[1].Val), myList0, "+", (nm.list[1].difficulty + nm.list[0].list[1].difficulty + 1))
 
 			myList1 := make([]*Number, 2)
-			myList1[0] = i.list[0].list[0]
+			myList1[0] = nm.list[0].list[0]
 			myList1[1] = bPlusC
-			newNum := NewNumber(i.Val, myList1, "-", (bPlusC.difficulty + i.list[0].list[0].difficulty + 1))
-			i = newNum
+			newNum := NewNumber(nm.Val, myList1, "-", (bPlusC.difficulty + nm.list[0].list[0].difficulty + 1))
+			nm = newNum
 			//i.TidyOperators()
-			i.ProveSol() //CBH we've made serious modification so test it
-		} else if i.list[1].operation == "-" {
+			nm.ProveSol() //CBH we've made serious modification so test it
+		} else if nm.list[1].operation == "-" {
 			// Transform a-(b-c) -> (a+c)-b
 			// in this terminology
 			// a = i.list[0]
@@ -197,45 +197,45 @@ func (i *Number) tidyOperators() {
 
 			// create a+c
 			myList0 := make(NumCol, 2)
-			myList0[0] = i.list[0]
-			myList0[1] = i.list[1].list[1]
+			myList0[0] = nm.list[0]
+			myList0[1] = nm.list[1].list[1]
 			aPlusC := NewNumber((myList0[0].Val + myList0[1].Val), myList0, "+", (myList0[0].difficulty + myList0[1].difficulty + 1))
 
 			myList1 := make(NumCol, 2)
 			myList1[0] = aPlusC
-			myList1[1] = i.list[1].list[0]
-			newNum := NewNumber(i.Val, myList1, "-", (aPlusC.difficulty + myList1[1].difficulty + 1))
+			myList1[1] = nm.list[1].list[0]
+			newNum := NewNumber(nm.Val, myList1, "-", (aPlusC.difficulty + myList1[1].difficulty + 1))
 
-			i = newNum
+			nm = newNum
 			//i.TidyOperators()
-			i.ProveSol()
+			nm.ProveSol()
 		}
 	}
 
 }
 
 // ProveSol will prove the soltion and return the value it calculated
-func (i *Number) ProveSol() int {
+func (nm *Number) ProveSol() int {
 	// This function should go through the list and prove the solution
 	// Also do other sanity checking like the ,/- operators only have 2 items in the list
 	// That anything with a valid operator has >1 item in the list
 	runningTotal := 0
 	firstRun := true
-	if (i.list == nil) || (len(i.list) == 0) {
+	if (nm.list == nil) || (len(nm.list) == 0) {
 		// This is a source value
-		return i.Val
-	} else if len(i.list) == 1 {
-		pretty.Print(i)
+		return nm.Val
+	} else if len(nm.list) == 1 {
+		pretty.Print(nm)
 		log.Fatal("Error invalid list length")
 		return 0
 	} else {
-		for _, v := range i.list {
+		for _, v := range nm.list {
 			if firstRun {
 				//pretty.Print(v)
 				firstRun = false
 				runningTotal = v.ProveSol()
 			} else {
-				switch i.operation {
+				switch nm.operation {
 				case "+":
 					runningTotal = runningTotal + v.ProveSol()
 				case "-":
@@ -253,52 +253,77 @@ func (i *Number) ProveSol() int {
 				}
 			}
 		}
-		if runningTotal != i.Val {
-			pretty.Println(i)
+		if runningTotal != nm.Val {
+			pretty.Println(nm)
 
-			fmt.Println("We calculated ", runningTotal, i.String())
+			fmt.Println("We calculated ", runningTotal, nm.String())
 			log.Fatal("Failed to self check solution")
 		}
 		return runningTotal
 	}
 }
-func (i *Number) setDifficulty() int {
-	if (i.list == nil) || (len(i.list) == 0) {
-		i.difficulty = 0
+func (nm Number) calculate() int {
+	if nm.Val > 0 {
+		return nm.Val
+	}
+	var operateFunc func(a, b int) int
+
+	if len(nm.list) > 1 {
+		operateFunc = determineOperator(nm.operation)
+	}
+	switch len(nm.list) {
+	case 0:
+		log.Fatal("len 0")
+	case 1:
+		return nm.list[0].calculate()
+	case 2:
+		return operateFunc(nm.list[0].calculate(), nm.list[1].calculate())
+	default:
+		runningVal := 0
+		for _, v := range nm.list {
+			runningVal = operateFunc(runningVal, v.calculate())
+		}
+		return runningVal
+	}
+	return 0
+}
+func (nm *Number) setDifficulty() int {
+	if (nm.list == nil) || (len(nm.list) == 0) {
+		nm.difficulty = 0
 		return 0
 	}
-	switch i.operation {
+	switch nm.operation {
 	case "+":
-		i.difficulty = 1
+		nm.difficulty = 1
 	case "-", "--":
-		i.difficulty = 1
+		nm.difficulty = 1
 	case "*":
-		i.difficulty = 2
+		nm.difficulty = 2
 	case "/", "\\":
-		i.difficulty = 3
+		nm.difficulty = 3
 	default:
 		log.Fatal("Unknown operation type")
 	}
-	for _, v := range i.list {
-		i.difficulty += v.setDifficulty()
+	for _, v := range nm.list {
+		nm.difficulty += v.setDifficulty()
 	}
-	return i.difficulty
+	return nm.difficulty
 }
 
-func (i *Number) String() string {
+func (nm *Number) String() string {
 	var proof string
 	var val int
-	val = i.Val
+	val = nm.Val
 	//pretty.Print(i)
-	if i.list == nil {
+	if nm.list == nil {
 		//proof = fmt.Sprintf("%d", val)
 		proof = strconv.Itoa(val)
 	} else {
 		proof = ""
 		op := ""
-		for _, v := range i.list {
+		for _, v := range nm.list {
 
-			switch i.operation {
+			switch nm.operation {
 			case "--":
 
 				proof = v.String() + op + proof
@@ -311,7 +336,7 @@ func (i *Number) String() string {
 			default:
 				proof = proof + op + v.String()
 				//proof = v.ProveIt() + op + proof
-				op = i.operation
+				op = nm.operation
 			}
 
 		}

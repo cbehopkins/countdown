@@ -386,7 +386,7 @@ func TestFps(t *testing.T) {
 				fv := foundValues.Duplicate()
 				pstrct := newFastPermStruct(bob, fv)
 				//tb.StartTimer()
-				pstrct.Work()
+				pstrct.Work(0)
 				fv.LastNumMap()
 			}
 		}
@@ -405,7 +405,7 @@ func BenchmarkFps(b *testing.B) {
 				fv := foundValues.Duplicate()
 				pstrct := newFastPermStruct(bob, fv)
 				tb.StartTimer()
-				pstrct.Work()
+				pstrct.Work(0)
 				fv.LastNumMap()
 			}
 		}
