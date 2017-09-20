@@ -2,8 +2,9 @@ package cntSlv
 
 import (
 	"fmt"
-	"github.com/tonnerre/golang-pretty"
 	"log"
+
+	"github.com/tonnerre/golang-pretty"
 )
 
 // maths.go contains the functions that actually do the maths on a pair of numbers
@@ -67,6 +68,8 @@ func (foundValues *NumMap) doMaths(list []*Number) (numToMake int,
 	return
 }
 
+// AddItems is used to add several items at once
+// Used by the calculation functions to efficiently add a bunch of stuff
 func (foundValues *NumMap) AddItems(list []*Number, retList []*Number, currentNumberLoc int,
 	addSet, mulSet, subSet, divSet, aGtB bool) {
 	a := list[0].Val

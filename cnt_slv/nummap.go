@@ -39,9 +39,12 @@ type NumMap struct {
 	PermuteMode int
 }
 
+// Duplicate returns a copy of the source
 func (nmp *NumMap) Duplicate() *NumMap {
 	itm := NewNumMap()
 
+	// REVISIT
+	// Deep copy any numbers in the struct too
 	itm.TargetSet = nmp.TargetSet
 	itm.Target = nmp.Target
 

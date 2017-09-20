@@ -41,8 +41,8 @@ func TestWeirdWork(t *testing.T) {
 	log.Println("Find 327", sol327.StringNum(327))
 
 	combined = append(mk400, mk327...)
-	var workList WrkLst
-	workList = NewWrkLst(combined)
+	var workList wrkLst
+	workList = newWrkLst(combined)
 	chkFunc := func() bool {
 		for _, workUnit := range workList.lst {
 			var unitA, unitB NumCol

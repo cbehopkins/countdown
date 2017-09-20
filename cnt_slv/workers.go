@@ -49,7 +49,7 @@ func workN(arrayIn NumCol, foundValues *NumMap, multipass bool) SolLst {
 	// we then take each value in this list and work that to get {{9},{3}}
 	// the final list we want to return is {{5,4}, {1,4}, {9},{3}}
 	// the reason to not return {2,3,4} is so that in the grand scheme of things we can recurse these lists
-	workList := NewWrkLst(arrayIn)
+	workList := newWrkLst(arrayIn)
 	// so by this stage we have something like {{{2},{3,4}}} or for a 4 variable: { {{2}, {3,4,5}}, {{2,3},{4,5}} }
 
 	if multipass {

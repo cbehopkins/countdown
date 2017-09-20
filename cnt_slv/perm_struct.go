@@ -13,9 +13,13 @@ import (
 )
 
 const (
+	// LonMap - one map for all workers
 	LonMap = iota
+	// FastMap - actually slower but uses arrays for much lower memory usage
 	FastMap
+	// ParMap One Map for each worker, then merge them at the end
 	ParMap
+	// NetMap try and use the Network
 	NetMap
 )
 
@@ -23,54 +27,6 @@ type umNetStruct struct {
 	UseMult    bool  `json:"mul"`
 	PostResult bool  `json:"post,omitempty"` // Postpone sending of the result
 	Val        []int `json:"int"`
-}
-type fastPermStruct struct {
-	p               *permutation.Permutator
-	numPermutations int
-	ch              chan Proofs
-	wg              *sync.WaitGroup
-}
-
-func newFastPermStruct(arrayIn NumCol, foundValues *NumMap) *fastPermStruct {
-	itm := new(fastPermStruct)
-	values := arrayIn.Values()
-	p, err := permutation.NewPerm(values, nil)
-	if err != nil {
-		fmt.Println(err)
-	}
-	itm.p = p
-	itm.ch = make(chan Proofs)
-	itm.wg = new(sync.WaitGroup)
-	itm.wg.Add(1)
-	go itm.Worker(foundValues)
-	return itm
-}
-func (ps *fastPermStruct) Work() {
-	p := ps.p
-	for result, err := p.Next(); err == nil; result, err = p.Next() {
-		bob, ok := result.([]int)
-		if !ok {
-			log.Fatalf("Error Type conversion problem\n")
-		}
-		inP := NewProofLstMany(bob)
-		// Get a data structure to put the result into
-		proofs := getProofs()
-		// Populate it
-		proofs.wrkFast(*inP)
-		// Now convert the result into something we can use
-		ps.ch <- proofs
-	}
-	close(ps.ch)
-	ps.wg.Wait()
-}
-
-// Worker pulls completed proofs off the channel
-// and stuffs them into the map
-func (fps fastPermStruct) Worker(fv *NumMap) {
-	for proofs := range fps.ch {
-		proofs.AddProofsNm(fv)
-	}
-	fps.wg.Done()
 }
 
 type permStruct struct {
@@ -147,7 +103,7 @@ func (ps *permStruct) workerPar(it NumCol, fv *NumMap) {
 	ps.mapMergeChan <- arthur
 	ps.coallateDone <- true
 }
-func (pr Proofs) AddProofsNm(fv *NumMap) {
+func (pr Proofs) addProofsNm(fv *NumMap) {
 	for i, v := range pr {
 		proofTxt := v.String()
 		if proofTxt != "" {
@@ -163,8 +119,11 @@ func (pr Proofs) AddProofsNm(fv *NumMap) {
 		}
 	}
 }
-func (it NumCol) CreatePl() *proofLst {
-	inP := NewProofLst(0)
+
+// createPl is used to create a new proof list from a NumCol
+// i.e. fudge between the two formats
+func (it NumCol) createPl() *proofLst {
+	inP := newProofLst(0)
 	for _, v := range it.Values() {
 		inP.Init(v)
 	}
@@ -173,13 +132,13 @@ func (it NumCol) CreatePl() *proofLst {
 func (ps *permStruct) workerFast(it NumCol, fv *NumMap) {
 	if !fv.Solved() {
 
-		inP := it.CreatePl()
+		inP := it.createPl()
 		// Get a data structure to put the result into
 		proofs := getProofs()
 		// Populate it
 		proofs.wrkFast(*inP)
 		// Now convert the result into something we can use
-		proofs.AddProofsNm(fv)
+		proofs.addProofsNm(fv)
 
 	}
 	ps.coallateDone <- true
@@ -244,7 +203,7 @@ func (ps *permStruct) workerNetSend(it NumCol, fv *NumMap) {
 	//////////
 	// Take the message text we've got back and interpret it
 	if len(message) > 3 {
-		fv.MergeJson(message)
+		fv.MergeJSON(message)
 	}
 
 	ps.netChannels <- conn
@@ -277,7 +236,7 @@ func (ps *permStruct) workerNetClose(fv *NumMap) {
 		// Take the message text we've got back and interpret it
 		parMerge.Add(1)
 		go func() {
-			fv.MergeJson(message)
+			fv.MergeJSON(message)
 			//err := fv.FastUnMarshalJson([]byte(message))
 			//if (err !=nil) {
 			//	fmt.Printf("Fast Unmarshall error %v\n", err)

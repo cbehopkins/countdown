@@ -11,21 +11,20 @@ import (
 const (
 	maxInputs         = 6
 	maxValue          = 1024
-	SelfCheck         = false
-	UseExtraFast      = false
-	UseProofListCache = true
-	UseChanCache      = false
-	UseProofPool      = true
-	UsePool           = true
-	UseBa             = true
+	selfCheck         = false
+	useExtraFast      = false
+	useProofListCache = true
+	useProofPool      = true
+	usePool           = true
+	useBa             = true
 )
 
-const OpLen = 1
+const opLen = 1
 
-var Ob = []byte{'('}
-var Cb = []byte{')'}
-var Blen = len(Ob) * 2
-var MaxCap = (maxInputs * 4) + ((Blen + OpLen) * (maxInputs - 1))
+var oB = []byte{'('}
+var cB = []byte{')'}
+var bLen = len(oB) * 2
+var maxCap = (maxInputs * 4) + ((bLen + opLen) * (maxInputs - 1))
 
 var proofsPool sync.Pool
 var nulPool sync.Pool
@@ -34,7 +33,7 @@ var poolProofListArray map[int]*sync.Pool
 var poolProofsArray []sync.Pool
 
 func init() {
-	poolBa = newBaPool(MaxCap)
+	poolBa = newBaPool(maxCap)
 	poolProofListArray = make(map[int]*sync.Pool)
 	proofsPool = sync.Pool{
 		New: func() interface{} {
@@ -48,7 +47,7 @@ func init() {
 		poolProofsArray[i] = sync.Pool{
 			New: func() interface{} {
 
-				return NewProofsArray(j)
+				return newProofsArray(j)
 			},
 		}
 	}
@@ -58,7 +57,7 @@ func init() {
 // It shouldn't, but this is not safe to assume
 // Anyone who calls this should clear it before use
 func getProofs() Proofs {
-	if UseProofPool {
+	if useProofPool {
 		pl := proofsPool.Get().(Proofs)
 		//    if SelfCheck {
 		//      if cap(pl) != maxValue {
@@ -67,19 +66,19 @@ func getProofs() Proofs {
 		//      //pl.Clear()
 		//    }
 		return pl
-	} else {
-		pl := NewProofs()
-		return pl
 	}
+	pl := NewProofs()
+	return pl
+
 }
 func putProofs(pl Proofs) {
 	//pl.Clear()
 	pl.Reset()
-	if UseProofPool {
+	if useProofPool {
 		proofsPool.Put(pl)
 	}
 }
-func NewProofsArray(cnt int) []Proofs {
+func newProofsArray(cnt int) []Proofs {
 	tmp := make([]Proofs, cnt)
 	for i := 0; i < cnt; i++ {
 		tmp[i] = getProofs()
@@ -108,7 +107,7 @@ func putProofsArray(pla []Proofs) {
 	poolProofsArray[cnt].Put(pla)
 }
 func newBa(capa int) []byte {
-	return make([]byte, 0, MaxCap)
+	return make([]byte, 0, maxCap)
 }
 func newBaPool(capa int) *sync.Pool {
 	return &sync.Pool{
@@ -127,14 +126,14 @@ func getBa(capa int) []byte {
 		//    log.Fatal("Weird Buffer on pool", string(tmp), cap(tmp), len(tmp))
 		//  }
 		return tmp
-	} else {
-		return newBa(capa)
 	}
+	return newBa(capa)
+
 }
 
 func putBa(ba []byte) {
-	if UseBa {
-		if cap(ba) == MaxCap {
+	if useBa {
+		if cap(ba) == maxCap {
 			ba = ba[0:0]
 			poolBa.Put(ba)
 		} else {
@@ -145,17 +144,17 @@ func putBa(ba []byte) {
 		}
 	}
 }
-func NewProofLstArray(capa int) []proofLst {
+func newProofLstArray(capa int) []proofLst {
 	tmp := make([]proofLst, 0, capa)
 	return tmp
 }
 func getProofListArray(capa int) []proofLst {
-	if UseProofListCache {
+	if useProofListCache {
 		pl, ok := poolProofListArray[capa]
 		if !ok || pl == nil {
 			pl = &sync.Pool{
 				New: func() interface{} {
-					return NewProofLstArray(capa)
+					return newProofLstArray(capa)
 				},
 			}
 			poolProofListArray[capa] = pl
@@ -169,13 +168,13 @@ func getProofListArray(capa int) []proofLst {
 		//      log.Fatal("Learn how to write code Chris")
 		//    }}
 		return tmp
-	} else {
-		pl := NewProofLstArray(capa)
-		return pl
 	}
+	pl := newProofLstArray(capa)
+	return pl
+
 }
 func putProofListArray(pl []proofLst) {
-	if UseProofListCache {
+	if useProofListCache {
 		capa := cap(pl)
 		pool, ok := poolProofListArray[capa]
 		if !ok {
@@ -186,20 +185,20 @@ func putProofListArray(pl []proofLst) {
 	}
 }
 
-type Operator []byte
+type operator []byte
 
-func NewOperator(in string) Operator {
-	return Operator(in)
+func newOperator(in string) operator {
+	return operator(in)
 }
 
-func (op Operator) String() string {
+func (op operator) String() string {
 	return string(op)
 }
-func (op Operator) Bytes() []byte {
+func (op operator) Bytes() []byte {
 	return []byte(op)
 }
 
-// A proof is saying how we got a number from a set of other Numbers
+// Proof A proof is saying how we got a number from a set of other Numbers
 type Proof struct {
 	tmp []byte
 }
@@ -221,34 +220,36 @@ func (pr *Proof) merge(inp Proof) {
 		//    }
 	}
 }
+
+// NewProof Create a single new proof from an integer
 func NewProof(input int) *Proof {
 	tmpBufArr := []byte(strconv.Itoa(input))
 	tmp := tmpBufArr
 	return &Proof{tmp: tmp}
 }
-func (prs *Proofs) mrg3(v int, pr, input Proof, op Operator) {
+func (prs *Proofs) mrg3(v int, pr, input Proof, op operator) {
 	tmp := *prs
 	buffer := tmp[v].tmp
-	capNeeded := Blen + OpLen + len(pr.tmp) + len(input.tmp)
+	capNeeded := bLen + opLen + len(pr.tmp) + len(input.tmp)
 	tmp[v].tmp = pr.concatCore(input, op, buffer, capNeeded)
 }
 
 // concat returns a new proof that is the result of
 // two proofs and an operator
-func (pr Proof) concat(input Proof, op Operator) Proof {
-	if SelfCheck && pr.tmp == nil {
+func (pr Proof) concat(input Proof, op operator) Proof {
+	if selfCheck && pr.tmp == nil {
 		log.Fatal("Concat to nil error")
 	}
-	if SelfCheck && pr.tmp[0] == byte(0) {
+	if selfCheck && pr.tmp[0] == byte(0) {
 		log.Fatalf("Zero in buffer")
 	}
 	var tmp []byte
-	capNeeded := Blen + OpLen + len(pr.tmp) + len(input.tmp)
+	capNeeded := bLen + opLen + len(pr.tmp) + len(input.tmp)
 	tmp = getBa(capNeeded)
 	tmp = pr.concatCore(input, op, tmp, capNeeded)
 	return Proof{tmp: tmp}
 }
-func (pr Proof) concatCore(input Proof, op Operator, byteStore []byte, capNeeded int) []byte {
+func (pr Proof) concatCore(input Proof, op operator, byteStore []byte, capNeeded int) []byte {
 	tmpOp := op.Bytes()
 	//  if false {
 	//    byteStore = append(byteStore, Ob...)
@@ -272,11 +273,11 @@ func (pr Proof) concatCore(input Proof, op Operator, byteStore []byte, capNeeded
 	//      }
 	//    }
 	byteStore = byteStore[0:capNeeded]
-	total := copy(byteStore[0:], Ob)
+	total := copy(byteStore[0:], oB)
 	total += copy(byteStore[total:], pr.tmp)
 	total += copy(byteStore[total:], tmpOp)
 	total += copy(byteStore[total:], input.tmp)
-	total += copy(byteStore[total:], Cb)
+	total += copy(byteStore[total:], cB)
 	//    if SelfCheck && total != capNeeded {
 	//      log.Fatal("Total wrong", total, tmp)
 	//    }
@@ -295,17 +296,28 @@ func (pr Proof) concatCore(input Proof, op Operator, byteStore []byte, capNeeded
 func (pr Proof) String() string {
 	return string(pr.tmp)
 }
+
+// Valid Is the selected proof valid
 func (pr Proof) Valid() bool {
-	return pr.tmp != nil
+	if pr.tmp == nil {
+		return true
+	}
+	return len(pr.tmp) != 0
 }
+
+// Len retuens the length of a proof
 func (pr Proof) Len() int {
 	return len(pr.tmp)
 }
+
+// Exists Test a proof list to see if a value has been found
 func (pr Proof) Exists() bool {
 	return pr.Len() > 0
 }
+
+// Clear the structure returning the buffer to the pool
 func (pr *Proof) Clear() {
-	if pr.Valid() {
+	if pr.tmp != nil {
 		putBa(pr.tmp)
 		//    for i := range pr.tmp {
 		//      pr.tmp[i] = 0
@@ -313,6 +325,8 @@ func (pr *Proof) Clear() {
 	}
 	pr.tmp = nil
 }
+
+// Reset the proof keeping the buffers
 func (pr *Proof) Reset() {
 	if pr.Valid() {
 		pr.tmp = pr.tmp[0:0]
@@ -333,6 +347,8 @@ func (prs Proofs) String() string {
 	}
 	return retString
 }
+
+// Exists Test a proof list to see if a value has been found
 func (prs Proofs) Exists(val int) bool {
 	if (val > 0) && (val < len(prs)) {
 		if prs[val].Len() > 0 {
@@ -341,25 +357,31 @@ func (prs Proofs) Exists(val int) bool {
 	}
 	return false
 }
+
+// NewProofs A New proof structure to add found proofs to
 func NewProofs() Proofs {
 	itm := make(Proofs, 0, maxValue)
 	return itm
 }
 
-// ProofLst is a list of proofs
+// proofLst is a list of proofs
 // It is always 4 items long
 type proofLst struct {
 	intL []int
 	prs  []Proof
 }
 
-func NewProofLst(leng int) *proofLst {
+// newProofLst Create a new proof list with a single proof
+func newProofLst(leng int) *proofLst {
 	itm := new(proofLst)
 	itm.prs = make([]Proof, leng)
 	itm.intL = make([]int, leng)
 	return itm
 }
-func NewProofLstMany(arr []int) *proofLst {
+
+// newProofLstMany as NewProofLst
+// but for an array of integers
+func newProofLstMany(arr []int) *proofLst {
 	itm := new(proofLst)
 	leng := len(arr)
 	itm.prs = make([]Proof, 0, leng)
@@ -369,6 +391,7 @@ func NewProofLstMany(arr []int) *proofLst {
 	}
 	return itm
 }
+
 func (pl proofLst) String() string {
 	retStr := "{"
 	nl := ""
@@ -379,7 +402,11 @@ func (pl proofLst) String() string {
 	retStr += "}"
 	return retStr
 }
-func NewProofLstPair(val0, val1 int, pr0, pr1 Proof) proofLst {
+
+// newProofLstPair Creare a new proof list with jsut 2 proofs
+// Useful to make sure when we are crossing 2 we are producing the most
+// efficient result
+func newProofLstPair(val0, val1 int, pr0, pr1 Proof) proofLst {
 	//  if pr0.tmp[0] == byte(0) {
 	//    log.Fatalf("Zero in buffer pr0")
 	//  }
@@ -392,46 +419,52 @@ func NewProofLstPair(val0, val1 int, pr0, pr1 Proof) proofLst {
 		prs:  []Proof{pr0, pr1},
 	}
 }
+
+// Proofs:Get the proofs in this list
 func (pl proofLst) Proofs() []Proof {
 	return pl.prs
 }
 
+// Values: What values are in the list
 func (pl proofLst) Values() []int {
 	return pl.intL
 }
 
+// Add a value and proof for it tot he list
 func (pl *proofLst) Add(val int, pr Proof) {
 	pl.intL = append(pl.intL, val)
 	pl.prs = append(pl.prs, pr)
 }
+
+// Init initialises a proof list by addin a new number to it
 func (pl *proofLst) Init(val int) {
 	tmpP := *NewProof(val)
 	pl.Add(val, tmpP)
 }
 
+// Len shows the length of a proof list
 func (pl proofLst) Len() int {
-	if SelfCheck {
+	if selfCheck {
 		intLen := len(pl.intL)
 		prLen := len(pl.prs)
 		if intLen != prLen {
 			log.Fatal("Proof Lengths are not equal")
 		}
 		return intLen
-	} else {
-		return len(pl.intL)
 	}
+	return len(pl.intL)
 }
-func (inP proofLst) sliceAt(loc int) []proofLst {
+func (pl proofLst) sliceAt(loc int) []proofLst {
 	// Unable to use pool as the backing array is copied into other structures
-	retListP := NewProofLstArray(2)
+	retListP := newProofLstArray(2)
 	retListP = append(retListP,
 		proofLst{
-			intL: inP.intL[:loc],
-			prs:  inP.prs[:loc],
+			intL: pl.intL[:loc],
+			prs:  pl.prs[:loc],
 		},
 		proofLst{
-			intL: inP.intL[loc:],
-			prs:  inP.prs[loc:],
+			intL: pl.intL[loc:],
+			prs:  pl.prs[loc:],
 		})
 	return retListP
 }
@@ -439,6 +472,9 @@ func (prs *Proofs) empty() {
 	tmp := *prs
 	*prs = tmp[0:0]
 }
+
+// Clear exists to clear the contents of a proof
+// It does not return things tot he pool
 func (prs *Proofs) Clear() {
 	tmp := *prs
 	for i := range tmp {
@@ -453,6 +489,9 @@ func (prs *Proofs) Clear() {
 	//    }
 	//  }
 }
+
+// Reset the Proofs
+// returns the buffers back to the pool
 func (prs *Proofs) Reset() {
 	tmp := *prs
 	for i := range tmp {
@@ -468,9 +507,9 @@ func (pl proofLst) check() {
 }
 
 // Len is the number of valid proofs
-func (pl Proofs) Len() int {
+func (prs Proofs) Len() int {
 	cnt := 0
-	for _, v := range pl {
+	for _, v := range prs {
 		if v.Len() > 0 {
 			cnt++
 		}
@@ -496,7 +535,7 @@ func (prs *Proofs) wrkFast(inPr proofLst) {
 		return
 	default:
 		prs.InitLst(inPr)
-		prs.wrkFastGen(inPr, UsePool, false)
+		prs.wrkFastGen(inPr, usePool, false)
 		return
 	}
 	//return
@@ -596,7 +635,7 @@ func (prs *Proofs) mergeLst(inP proofLst) {
 func (prs *Proofs) merge(inP Proofs) {
 	for newVal, newProof := range inP {
 		if newProof.Valid() {
-			if SelfCheck && (newProof.Len() == 0) {
+			if selfCheck && (newProof.Len() == 0) {
 				log.Fatal("Zero length proof being merged in")
 			}
 			prs.extend(newVal)
@@ -620,7 +659,7 @@ func wrkFastGenParWorker(b0, b1 proofLst, proofChan chan Proofs, wg *sync.WaitGr
 	wg.Done()
 }
 func (prs *Proofs) recursiveCrossA(i, rv int, iP, rp Proof) {
-	inP := NewProofLstPair(i, rv, iP, rp)
+	inP := newProofLstPair(i, rv, iP, rp)
 	prs.wrkExtraFastPair(inP)
 }
 
@@ -631,7 +670,7 @@ func (prs *Proofs) recursiveCross(pra []Proofs, refVal int, refProof Proof) {
 	if len(pra) == 1 {
 		toRun = func(i int, rv int, iP, rp Proof) {
 			//prs.recursiveCrossA(i, rv, iP, rp)
-			inP := NewProofLstPair(i, rv, iP, rp)
+			inP := newProofLstPair(i, rv, iP, rp)
 			prs.wrkExtraFastPair(inP)
 		}
 	} else {
@@ -702,7 +741,7 @@ func (prs *Proofs) wrkFastGen(inP proofLst, pool, par bool) {
 	// {2,3}, {2,4}, {2,(3+4)},{2,(4-3)} etc
 	inLeng := inP.Len()
 	// Fast path
-	if SelfCheck && inLeng == 1 {
+	if selfCheck && inLeng == 1 {
 		log.Fatal("Length of 1??")
 	} else if inLeng == 2 {
 		prs.wrkExtraFastPair(inP)
@@ -722,7 +761,7 @@ func (prs *Proofs) wrkFastGen(inP proofLst, pool, par bool) {
 		numList1 = getProofs()
 	} else {
 		proofChan = make(chan Proofs)
-		wg.Add(splitter.Cnt())
+		wg.Add(splitter.cnt())
 		waitForIt := func() {
 			wg.Wait()
 			close(proofChan)
@@ -736,7 +775,7 @@ func (prs *Proofs) wrkFastGen(inP proofLst, pool, par bool) {
 		}()
 	}
 
-	for pl, err := splitter.Next(); err == nil; pl, err = splitter.Next() {
+	for pl, err := splitter.next(); err == nil; pl, err = splitter.next() {
 		if par {
 			//go wrkFastGenParWorker(pl[0], pl[1], proofChan, &wg)
 			//go arbCross(pl, proofChan, &wg)
@@ -762,7 +801,7 @@ func (prs *Proofs) loneFastCross(numList0, numList1 Proofs, bob0, bob1 proofLst)
 		if outer > 0 && (oProof.Len() > 0) {
 			for inner, iProof := range numList1 {
 				if inner > 0 && (iProof.Len() > 0) {
-					inP := NewProofLstPair(outer, inner, oProof, iProof)
+					inP := newProofLstPair(outer, inner, oProof, iProof)
 					prs.wrkExtraFastPair(inP)
 				}
 			}
@@ -786,7 +825,7 @@ func newSplitter(inP *proofLst) *splitter {
 
 var errSpEnd = errors.New("End of splitter")
 
-func (sp *splitter) Next() (pl []proofLst, err error) {
+func (sp *splitter) next() (pl []proofLst, err error) {
 	if sp.i < sp.numAdded {
 		pl = sp.inPp.sliceAt(sp.i + 1)
 	} else {
@@ -795,10 +834,10 @@ func (sp *splitter) Next() (pl []proofLst, err error) {
 	sp.i++
 	return
 }
-func (sp splitter) Cnt() int {
+func (sp splitter) cnt() int {
 	return sp.numAdded
 }
-func WrkFastSplit(inP proofLst) []proofLst {
+func wrkFastSplit(inP proofLst) []proofLst {
 	// Take the proof list and split it into the sub possibilities
 	// i.e. {2,3,4} becomes:
 	// {{2},{3,4}}
@@ -816,16 +855,16 @@ func WrkFastSplit(inP proofLst) []proofLst {
 	return retListP
 }
 
-var plus_operator Operator
-var mult_operator Operator
-var minus_operator Operator
-var div_operator Operator
+var plusOperator operator
+var multOperator operator
+var minusOperator operator
+var divOperator operator
 
 func init() {
-	plus_operator = NewOperator("+")
-	mult_operator = NewOperator("*")
-	minus_operator = NewOperator("-")
-	div_operator = NewOperator("/")
+	plusOperator = newOperator("+")
+	multOperator = newOperator("*")
+	minusOperator = newOperator("-")
+	divOperator = newOperator("/")
 }
 
 // wrkExtraFastPair Is a hand optimised version of wrkFastPair
@@ -844,37 +883,37 @@ func (prs *Proofs) wrkExtraFastPair(inP proofLst) {
 	pr0l := pr0.Len()
 	pr1l := pr1.Len()
 
-	swap_values := input1 > input0
-	plus_value := input0 + input1
-	mult_value := input0 * input1
+	swapValues := input1 > input0
+	plusValue := input0 + input1
+	multValue := input0 * input1
 
-	if prs.interestingProof(plus_value, pr0l, pr1l) {
-		prs.mrg3(plus_value, pr0, pr1, plus_operator)
+	if prs.interestingProof(plusValue, pr0l, pr1l) {
+		prs.mrg3(plusValue, pr0, pr1, plusOperator)
 	}
-	minus_value := input0 - input1
-	if swap_values {
+	minusValue := input0 - input1
+	if swapValues {
 		input0, input1 = input1, input0
 	}
 
 	// Make sure to only generate new proofs when needed
-	if prs.interestingProof(mult_value, pr0l, pr1l) {
-		prs.mrg3(mult_value, pr0, pr1, mult_operator)
+	if prs.interestingProof(multValue, pr0l, pr1l) {
+		prs.mrg3(multValue, pr0, pr1, multOperator)
 	}
 	modDivide := (input0 % input1)
-	if swap_values {
-		minus_value = -minus_value
+	if swapValues {
+		minusValue = -minusValue
 		pr1, pr0 = pr0, pr1
 		pr0l, pr1l = pr1l, pr0l
 	}
 	canDivide := modDivide == 0
-	div_value := input0 / input1
-	if prs.interestingProof(minus_value, pr0l, pr1l) {
-		prs.mrg3(minus_value, pr0, pr1, minus_operator)
+	divValue := input0 / input1
+	if prs.interestingProof(minusValue, pr0l, pr1l) {
+		prs.mrg3(minusValue, pr0, pr1, minusOperator)
 	}
 
 	if canDivide {
-		if prs.interestingProof(div_value, pr0l, pr1l) {
-			prs.mrg3(div_value, pr0, pr1, div_operator)
+		if prs.interestingProof(divValue, pr0l, pr1l) {
+			prs.mrg3(divValue, pr0, pr1, divOperator)
 		}
 	}
 	return
@@ -981,9 +1020,8 @@ func parseRunes(inA <-chan rune) *Number {
 	gotNum()
 	if len(tmpNumArr) == 1 {
 		return tmpNumArr[0]
-	} else {
-		return retVal()
 	}
+	return retVal()
 }
 func parseString(in string) *Number {
 	inA := make(chan rune)

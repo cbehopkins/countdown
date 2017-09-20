@@ -6,11 +6,11 @@ import (
 	"github.com/tonnerre/golang-pretty"
 )
 
-type WrkLst struct {
+type wrkLst struct {
 	lst []SolLst
 }
 
-func (wl WrkLst) procWork(foundValues *NumMap, wf func(a, b *Number) bool) {
+func (wl wrkLst) procWork(foundValues *NumMap, wf func(a, b *Number) bool) {
 	run := true
 	for _, workUnit := range wl.lst {
 		// Now we've extracted one work item,
@@ -29,14 +29,14 @@ func (wl WrkLst) procWork(foundValues *NumMap, wf func(a, b *Number) bool) {
 		unitB := workUnit[1]
 		listA := workN(unitA, foundValues, false)
 		listB := workN(unitB, foundValues, false)
-		gimmieA := NewGimmie(listA)
-		gimmieB := NewGimmie(listB)
+		gimmieA := newGimmie(listA)
+		gimmieB := newGimmie(listB)
 
-		for aNum, errA := gimmieA.Next(); (errA == nil) && run; aNum, errA = gimmieA.Next() {
-			for bNum, errB := gimmieB.Next(); (errB == nil) && run; bNum, errB = gimmieB.Next() {
+		for aNum, errA := gimmieA.next(); (errA == nil) && run; aNum, errA = gimmieA.next() {
+			for bNum, errB := gimmieB.next(); (errB == nil) && run; bNum, errB = gimmieB.next() {
 				run = wf(aNum, bNum)
 			}
-			gimmieB.Reset()
+			gimmieB.reset()
 		}
 		if !run {
 			return
@@ -57,7 +57,7 @@ func (wl WrkLst) procWork(foundValues *NumMap, wf func(a, b *Number) bool) {
 // The important point is that even though the list we return may be indefinitly long
 // each work unit within it is then a smaller unit
 // so an input array of 3 numbers only generates work units that contain number lists of length 2 or less
-func NewWrkLst(arrayA NumCol) WrkLst {
+func newWrkLst(arrayA NumCol) wrkLst {
 	var workList []SolLst
 
 	lenArrayM1 := arrayA.Len() - 1
@@ -76,21 +76,21 @@ func NewWrkLst(arrayA NumCol) WrkLst {
 		workItem = append(workItem, arA, arB)
 		workList = append(workList, workItem)
 	}
-	return WrkLst{lst: workList}
+	return wrkLst{lst: workList}
 }
 
 // Len returns the length of the worklist
-func (wl WrkLst) Len() int {
+func (wl wrkLst) Len() int {
 	return len(wl.lst)
 }
 
 // Get a specific item off the worklist
-func (wl WrkLst) Get(itm int) SolLst {
+func (wl wrkLst) Get(itm int) SolLst {
 	return wl.lst[itm]
 }
 
 // Last retrieves the last item
 // This contains the sources that started this list
-func (wl WrkLst) Last() SolLst {
+func (wl wrkLst) Last() SolLst {
 	return wl.Get(wl.Len() - 1)
 }

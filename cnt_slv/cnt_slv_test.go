@@ -16,7 +16,7 @@ type testset struct {
 	Target   int
 }
 
-func NewTestSet(target int, seld ...int) *testset {
+func newTestSet(target int, seld ...int) *testset {
 	item := new(testset)
 	item.Target = target
 	item.Selected = make([]int, len(seld))
@@ -27,18 +27,18 @@ func NewTestSet(target int, seld ...int) *testset {
 }
 func initMany() []testset {
 	retLst := make([]testset, 9)
-	retLst[0] = *NewTestSet(833, 50, 3, 3, 1, 10, 7)
-	retLst[1] = *NewTestSet(78, 8, 9, 10, 75, 25, 100)
-	retLst[2] = *NewTestSet(540, 4, 5, 7, 2, 4, 8)
-	retLst[3] = *NewTestSet(952, 25, 50, 75, 100, 3, 6)
-	retLst[4] = *NewTestSet(559, 75, 10, 5, 6, 1, 3)
-	retLst[5] = *NewTestSet(406, 25, 50, 10, 7, 5, 1)
-	retLst[6] = *NewTestSet(269, 100, 10, 8, 9, 7, 7)
-	retLst[7] = *NewTestSet(277, 75, 10, 6, 3, 5, 4)
+	retLst[0] = *newTestSet(833, 50, 3, 3, 1, 10, 7)
+	retLst[1] = *newTestSet(78, 8, 9, 10, 75, 25, 100)
+	retLst[2] = *newTestSet(540, 4, 5, 7, 2, 4, 8)
+	retLst[3] = *newTestSet(952, 25, 50, 75, 100, 3, 6)
+	retLst[4] = *newTestSet(559, 75, 10, 5, 6, 1, 3)
+	retLst[5] = *newTestSet(406, 25, 50, 10, 7, 5, 1)
+	retLst[6] = *newTestSet(269, 100, 10, 8, 9, 7, 7)
+	retLst[7] = *newTestSet(277, 75, 10, 6, 3, 5, 4)
 	// (9-1)*50 = 400
 	// (100 + 9*3) = 327
 	// (400+327)= 727
-	retLst[8] = *NewTestSet(727, 50, 100, 9, 1, 9, 3)
+	retLst[8] = *newTestSet(727, 50, 100, 9, 1, 9, 3)
 	return retLst
 }
 
@@ -142,9 +142,9 @@ func TestMany(t *testing.T) {
 }
 func initFailMany() []testset {
 	retLst := make([]testset, 0, 7)
-	retLst = append(retLst, *NewTestSet(1000, 8, 9, 10))
-	retLst = append(retLst, *NewTestSet(824, 3, 7, 6, 2, 1, 7))
-	retLst = append(retLst, *NewTestSet(974, 1, 2, 2, 3, 3, 7))
+	retLst = append(retLst, *newTestSet(1000, 8, 9, 10))
+	retLst = append(retLst, *newTestSet(824, 3, 7, 6, 2, 1, 7))
+	retLst = append(retLst, *newTestSet(974, 1, 2, 2, 3, 3, 7))
 	return retLst
 }
 

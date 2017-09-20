@@ -8,33 +8,33 @@ import (
 // Rather than work out in advance everything we will need
 // This supplies the next workload unit when requested.
 // This is used to save memory
-type Gimmie struct {
+type gimmie struct {
 	solList SolLst
 	inner   int
 	outer   int
 	sent    bool
 }
 
-func NewGimmie(arrayIn SolLst) *Gimmie {
+func newGimmie(arrayIn SolLst) *gimmie {
 	//type NumCol []*Number
 	//type SolLst []*NumCol
-	itm := new(Gimmie)
+	itm := new(gimmie)
 	itm.solList = arrayIn
 	return itm
 }
-func (g *Gimmie) Items() (items int) {
+func (g *gimmie) items() (items int) {
 	for _, v := range g.solList {
 		items = items + v.Len()
 	}
 	return items
 }
-func (g *Gimmie) Reset() {
+func (g *gimmie) reset() {
 	g.sent = false
 	g.outer = 0
 	g.inner = 0
 }
 
-func (g *Gimmie) Next() (result *Number, err error) {
+func (g *gimmie) next() (result *Number, err error) {
 	for ; g.outer < g.solList.Len(); g.outer++ {
 		inLstP := g.solList[g.outer]
 		inLst := inLstP // It's okay these should be stack variables as they do not leave the scope

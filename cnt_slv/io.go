@@ -10,44 +10,53 @@ import (
 //io.go is responsible for all the io stuff related to pushing the structures
 // over the network
 
-type JsonStruct struct {
-	List []JsonNum `json:"l,omitempty"`
+// JSONStruct holds a number of items
+type JSONStruct struct {
+	List []JSONNum `json:"l,omitempty"`
 }
 
-func NewJsonStruct(items int) (itm *JsonStruct) {
-	itm = new(JsonStruct)
+// NewJSONStruct creates a new structure to work on
+func NewJSONStruct(items int) (itm *JSONStruct) {
+	itm = new(JSONStruct)
 	if items > 0 {
-		itm.List = make([]JsonNum, 0, items)
+		itm.List = make([]JSONNum, 0, items)
 	}
 	return itm
 }
-func (it *JsonStruct) Add(itm JsonNum) {
+
+// Add adds an item to the main structure
+func (it *JSONStruct) Add(itm JSONNum) {
 	it.List = append(it.List, itm)
 }
 
-type JsonNum struct {
+// JSONNum is how we carry a number over the json format
+type JSONNum struct {
 	// The aim here is to keep the produced JSON as small as possible
 	Val  int        `json:"v,attr"`
 	Op   string     `json:"o,attr"`
-	List JsonStruct `json:"s,omitempty"`
+	List JSONStruct `json:"s,omitempty"`
 }
 
-func AddNum(input Number) (result JsonNum) {
+// AddNum - add a number to the struct
+// returning a json struct
+func AddNum(input Number) (result JSONNum) {
 	result.Val = input.Val
 	result.Op = input.operation
-	result.List = *NewJsonStruct(len(input.list))
+	result.List = *NewJSONStruct(len(input.list))
 	for _, v := range input.list {
 		result.List.Add(AddNum(*v))
 	}
 	return result
 }
-func (item *NumMap) AddJsonNum(input JsonNum) (newNumber Number) {
+
+//AddJSONNum adds a number to the number map from the json struct
+func (item *NumMap) AddJSONNum(input JSONNum) (newNumber Number) {
 	newNumber.Val = input.Val
 	newNumber.operation = input.Op
 	if len(input.List.List) > 0 {
 		newNumber.list = make([]*Number, len(input.List.List))
 		for i, p := range input.List.List {
-			tmpNum := item.AddJsonNum(p)
+			tmpNum := item.AddJSONNum(p)
 			newNumber.list[i] = &tmpNum
 		}
 	}
@@ -55,8 +64,10 @@ func (item *NumMap) AddJsonNum(input JsonNum) (newNumber Number) {
 
 	return newNumber
 }
-func (item *NumMap) MarshalJson() (output []byte, err error) {
-	thingList := NewJsonStruct(len(item.nmp))
+
+// MarshalJSON takes the nummap and turns it into a json struct
+func (item *NumMap) MarshalJSON() (output []byte, err error) {
+	thingList := NewJSONStruct(len(item.nmp))
 
 	for _, v := range item.nmp {
 		tmp := AddNum(*v)
@@ -73,8 +84,11 @@ func (item *NumMap) MarshalJson() (output []byte, err error) {
 	//fmt.Println(s)
 	return
 }
-func (item *NumMap) UnMarshalJson(input []byte) (err error) {
-	v := NewJsonStruct(0)
+
+// UnMarshalJSON takes in a json struct and adds the
+// numbers to the nummap
+func (item *NumMap) UnMarshalJSON(input []byte) (err error) {
+	v := NewJSONStruct(0)
 	err = json.Unmarshal(input, v)
 	if err != nil {
 		//fmt.Printf("error: %v", err)
@@ -82,19 +96,20 @@ func (item *NumMap) UnMarshalJson(input []byte) (err error) {
 	}
 	for _, j := range v.List {
 		//fmt.Printf("Value of %d\n", j.Val)
-		item.AddJsonNum(j)
+		item.AddJSONNum(j)
 	}
 	// At the end populate difficulty and prove the solutions for our sanity
 	item.LastNumMap()
 	for _, j := range item.Numbers() {
 		j.ProveSol()
-		j.SetDifficulty()
+		j.setDifficulty()
 	}
 	return
 }
 
-func (item *NumMap) FastUnMarshalJson(input []byte) (err error) {
-	v := NewJsonStruct(0)
+// FastUnMarshalJSON - quikcer lesss inteligable version of above
+func (item *NumMap) FastUnMarshalJSON(input []byte) (err error) {
+	v := NewJSONStruct(0)
 	err = json.Unmarshal(input, v)
 	if err != nil {
 		fmt.Printf("error: %v", err)
@@ -102,14 +117,16 @@ func (item *NumMap) FastUnMarshalJson(input []byte) (err error) {
 	}
 	for _, j := range v.List {
 		//fmt.Printf("Value of %d\n", j.Val)
-		item.AddJsonNum(j)
+		item.AddJSONNum(j)
 	}
 	return
 }
 
-func ImportJson(message string) {
+// ImportJSON - just read in and print out
+// in proof like format
+func ImportJSON(message string) {
 	fv := NewNumMap()
-	err := fv.UnMarshalJson([]byte(message))
+	err := fv.UnMarshalJSON([]byte(message))
 	if err != nil {
 		fmt.Printf("error: %v\n", err)
 		return
@@ -117,9 +134,10 @@ func ImportJson(message string) {
 	fv.PrintProofs()
 }
 
-func (item *NumMap) MergeJson(message string) {
+// MergeJSON Use merge to get in a new json message
+func (item *NumMap) MergeJSON(message string) {
 	fv := NewNumMap()
-	err := fv.UnMarshalJson([]byte(message))
+	err := fv.UnMarshalJSON([]byte(message))
 	if err != nil {
 		fmt.Printf("error: %v\n", err)
 		return

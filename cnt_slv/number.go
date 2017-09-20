@@ -11,6 +11,9 @@ import (
 // number.go contains the basics of manipulating our number type
 // A number says where it comes from and effectively says how
 // one can make it
+
+// Number is the struct for a single number
+// That is possible built up from other numbers
 type Number struct {
 	// A number consists of
 	Val        int       `json:"val"` // a value
@@ -19,6 +22,7 @@ type Number struct {
 	difficulty int
 }
 
+//NewNumber - Create a new number to work on
 func NewNumber(inputA int, inputB []*Number, operation string, difficult int) *Number {
 	var newNum Number
 	newNum.configure(inputA, inputB, operation, difficult)
@@ -50,6 +54,7 @@ func (i *Number) configure(inputA int, inputB []*Number, operation string, diffi
 
 }
 
+//ProofLen returns the length of a proof
 func (i *Number) ProofLen() int {
 	var cumlen int
 	if i.list == nil {
@@ -61,14 +66,16 @@ func (i *Number) ProofLen() int {
 	}
 	return cumlen
 }
+
+// TidyDoubles - is useful for prittier proofs
+// Remove any double notation in a proof
+// we use   our own special notation to make things easier for ourselves
+// However it's better to remove it at the tidy stage
+// To make reducing the proof sizes easier
+// Here's what our operands say
+// a-b == b--a
+// a/b == b\\a
 func (i *Number) TidyDoubles() {
-	// Remove any double notation in a proof
-	// we use   our own special notation to make things easier for ourselves
-	// However it's better to remove it at the tidy stage
-	// To make reducing the proof sizes easier
-	// Here's what our operands say
-	// a-b == b--a
-	// a/b == b\\a
 
 	if (i.list == nil) || (len(i.list) == 0) {
 		return
@@ -97,7 +104,7 @@ func (i *Number) TidyDoubles() {
 	i.list = NumCol{i.list[1], i.list[0]}
 	return
 }
-func (i *Number) TidyOperators() {
+func (i *Number) tidyOperators() {
 	// This one is sexy
 	// we often in our proofs get things like:
 	// (((1+2)+3)+(4/2)) or
@@ -138,7 +145,7 @@ func (i *Number) TidyOperators() {
 	tmpList := make([]*Number, 0, 4) // CBH get this from the centra allocator
 	listModified := false
 	for _, v := range i.list {
-		v.TidyOperators()
+		v.tidyOperators()
 		// Let's just combine +s for now
 		if (i.operation == "+") && (v.operation == "+") {
 			i.difficulty = i.difficulty + v.difficulty
@@ -207,6 +214,7 @@ func (i *Number) TidyOperators() {
 
 }
 
+// ProveSol will prove the soltion and return the value it calculated
 func (i *Number) ProveSol() int {
 	// This function should go through the list and prove the solution
 	// Also do other sanity checking like the ,/- operators only have 2 items in the list
@@ -254,7 +262,7 @@ func (i *Number) ProveSol() int {
 		return runningTotal
 	}
 }
-func (i *Number) SetDifficulty() int {
+func (i *Number) setDifficulty() int {
 	if (i.list == nil) || (len(i.list) == 0) {
 		i.difficulty = 0
 		return 0
@@ -272,7 +280,7 @@ func (i *Number) SetDifficulty() int {
 		log.Fatal("Unknown operation type")
 	}
 	for _, v := range i.list {
-		i.difficulty += v.SetDifficulty()
+		i.difficulty += v.setDifficulty()
 	}
 	return i.difficulty
 }

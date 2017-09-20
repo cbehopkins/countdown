@@ -5,7 +5,6 @@ import (
 	"log"
 	"strconv"
 	"testing"
-
 	//	"github.com/pkg/profile"
 )
 
@@ -13,10 +12,10 @@ func ExampleProof() {
 	proof1 := *NewProof(1)
 	proof2 := *NewProof(2)
 	proof3 := *NewProof(3)
-	proof3a := proof1.concat(proof2, NewOperator("+"))
-	proof6 := proof2.concat(proof3, NewOperator("*"))
-	proof7 := proof6.concat(proof1, NewOperator("+"))
-	proof9 := proof3.concat(proof3a, NewOperator("*"))
+	proof3a := proof1.concat(proof2, newOperator("+"))
+	proof6 := proof2.concat(proof3, newOperator("*"))
+	proof7 := proof6.concat(proof1, newOperator("+"))
+	proof9 := proof3.concat(proof3a, newOperator("*"))
 
 	fmt.Println("Received", proof9)
 	fmt.Println("Received", proof7)
@@ -50,7 +49,7 @@ func testExists(expect []int, proofs Proofs) {
 func TestWrkFast0(t *testing.T) {
 
 	// Create an empty List
-	inP := NewProofLst(0)
+	inP := newProofLst(0)
 	// Initalise it with some numbers
 	inP.Init(2)
 	inP.Init(6)
@@ -67,7 +66,7 @@ func TestWrkFast0(t *testing.T) {
 func TestWrkFast1(t *testing.T) {
 
 	// Create an empty List
-	inP := NewProofLst(0)
+	inP := newProofLst(0)
 	// Initalise it with some numbers
 	inP.Init(100)
 	inP.Init(25)
@@ -144,7 +143,7 @@ func TestWrkFast1(t *testing.T) {
 }
 func TestWrkFastGen0(t *testing.T) {
 	// Create an empty List
-	inP := NewProofLst(0)
+	inP := newProofLst(0)
 	// Initalise it with some numbers
 	inP.Init(2)
 	inP.Init(6)
@@ -162,7 +161,7 @@ func TestWrkFastGen0(t *testing.T) {
 }
 func TestWrkFastGen1(t *testing.T) {
 	// Create an empty List
-	inP := NewProofLst(0)
+	inP := newProofLst(0)
 	// Initalise it with some numbers
 	inP.Init(2)
 	inP.Init(6)
@@ -179,13 +178,13 @@ func TestWrkFastGen1(t *testing.T) {
 
 func ExampleWrkFastSplit() {
 	// Create an empty List
-	inP := NewProofLst(0)
+	inP := newProofLst(0)
 	// Initalise it with some numbers
 	inP.Init(2)
 	inP.Init(4)
 	inP.Init(6)
 	inP.Init(8)
-	resP := WrkFastSplit(*inP)
+	resP := wrkFastSplit(*inP)
 	fmt.Println("Res:", resP)
 	//Output:
 	// Res: [{2->2} {4->4,6->6,8->8} {2->2,4->4} {6->6,8->8} {2->2,4->4,6->6} {8->8}]
@@ -199,7 +198,7 @@ func BenchmarkBasic(b *testing.B) {
 	for _, pool := range poolModes {
 		for _, par := range parModes {
 			for i := 2; i < 7; i++ {
-				inP := NewProofLst(0)
+				inP := newProofLst(0)
 				// Initalise it with some numbers
 				for j := 0; j < i; j++ {
 					inP.Init(runInts[j])
@@ -251,7 +250,7 @@ func TestDecompose0(t *testing.T) {
 func TestDecompose1(t *testing.T) {
 
 	// Create an empty List
-	inP := NewProofLst(0)
+	inP := newProofLst(0)
 	// Initalise it with some numbers
 	inP.Init(100)
 	inP.Init(25)

@@ -1,7 +1,6 @@
 package cntSlv
 
 import (
-	//	"fmt"
 	"sort"
 	"strconv"
 )
@@ -9,13 +8,16 @@ import (
 // declare.go is responsible for declaring the interesting structures
 // That is the NumCol and SolLst
 // the types that contain our Sets of candidates and lists of possible solutions
-// So NumCol is a collection of numbers
+
+// NumCol is a collection of numbers
 // This says that (for a given inout) you can have all of these numbers
 // at the same time
-// A solution List is a number of things you do with a set of numbers
 type NumCol []*Number
+
+// SolLst A solution List is a number of things you do with a set of numbers
 type SolLst []NumCol
 
+// Values is all the integher values in a number colleciton
 func (nc NumCol) Values() []int {
 	retInts := make([]int, len(nc))
 	for i, v := range nc {
@@ -24,38 +26,41 @@ func (nc NumCol) Values() []int {
 	return retInts
 }
 
-func (foundValues *NumMap) CountHelper(target int, sources []int) chan SolLst {
+// CountHelper an exportable funciton to help externals work with us
+func (nm *NumMap) CountHelper(target int, sources []int) chan SolLst {
 
 	// Create a list of the input sources
-	srcNumbers := foundValues.NewNumCol(sources)
-	foundValues.SetTarget(target)
+	srcNumbers := nm.NewNumCol(sources)
+	nm.SetTarget(target)
 
-	return permuteN(srcNumbers, foundValues)
+	return permuteN(srcNumbers, nm)
 }
 
-func (foundValues *NumMap) NewNumCol(input []int) NumCol {
+// NewNumCol Create a new number collection
+func (nm *NumMap) NewNumCol(input []int) NumCol {
 	var list NumCol
 	var emptyList NumCol
 
 	for _, v := range input {
 		a := NewNumber(v, emptyList, "I", 0)
-		foundValues.Add(v, a)
+		nm.Add(v, a)
 		list = append(list, a)
 	}
 	return list
 }
 
-// This function is used to add the initial numbers
-func (bob *NumCol) AddNum(inputNum int, foundValues *NumMap) {
+// AddNum This function is used to add the initial numbers
+func (nc *NumCol) AddNum(inputNum int, foundValues *NumMap) {
 	var emptyList NumCol
 
 	a := NewNumber(inputNum, emptyList, "I", 0)
 	foundValues.Add(inputNum, a)
-	*bob = append(*bob, a)
+	*nc = append(*nc, a)
 
 }
 
-func (item *SolLst) RemoveDuplicates() {
+// RemoveDuplicates from the list
+func (sl *SolLst) RemoveDuplicates() {
 	// The purpose of this is to go through the supplied list
 	// and modify the list to only include unique sets
 	// any sets that produce the same string are considered identical
@@ -63,10 +68,10 @@ func (item *SolLst) RemoveDuplicates() {
 	if false {
 		solMap := make(map[string]NumCol)
 		var delQueue []int
-		for i := 0; i < len(*item); i++ {
+		for i := 0; i < len(*sl); i++ {
 			var v NumCol
 			var t SolLst
-			t = *item
+			t = *sl
 			v = t[i]
 			str := v.String()
 
@@ -87,34 +92,38 @@ func (item *SolLst) RemoveDuplicates() {
 			//fmt.Printf("DQ#%d, Len=%d\n",i, len(del_queue))
 			v := delQueue[i-1]
 			//fmt.Println("You've asked to delete",v);
-			l1 := *item
-			*item = append(l1[:v], l1[v+1:]...)
+			l1 := *sl
+			*sl = append(l1[:v], l1[v+1:]...)
 		}
 		//fmt.Printf("In Check, OrigLen %d, New Len %d\n",orig_len,len(*item))
 	}
 }
-func (item NumCol) TidyNumCol() {
-	for _, v := range item {
+
+// Tidy up the list
+func (nc NumCol) Tidy() {
+	for _, v := range nc {
 		//v.ProveSol()
 		v.TidyDoubles()
-		v.TidyOperators()
+		v.tidyOperators()
 		v.ProveSol() // Just in case the Tidy functions have got things wrong
 	}
 }
-func (item SolLst) TidySolLst() {
-	for _, v := range item {
-		v.TidyNumCol()
+
+// Tidy up the list
+func (sl SolLst) Tidy() {
+	for _, v := range sl {
+		v.Tidy()
 	}
 }
 
-func (item NumCol) String() string {
+func (nc NumCol) String() string {
 	var retStr string
 	comma := ""
 	retStr = ""
-	tmpArray := make([]int, len(item))
+	tmpArray := make([]int, len(nc))
 
 	// Get the numbers, then sort them, then print them
-	for i, v := range item {
+	for i, v := range nc {
 		tmpArray[i] = v.Val
 	}
 	sort.Ints(tmpArray)
@@ -125,10 +134,10 @@ func (item NumCol) String() string {
 	}
 	return retStr
 }
-func (proofList SolLst) String() string {
+func (sl SolLst) String() string {
 	var retVal string
-	if len(proofList) > 0 {
-		for _, v := range proofList {
+	if len(sl) > 0 {
+		for _, v := range sl {
 			// v is *NumCol
 			for _, w := range v {
 				// w is *Number
@@ -145,9 +154,11 @@ func (proofList SolLst) String() string {
 	}
 	return retVal
 }
-func (proofList SolLst) StringNum(val int) string {
+
+// StringNum return the string for the supplied number
+func (sl SolLst) StringNum(val int) string {
 	var retVal string
-	for _, v := range proofList {
+	for _, v := range sl {
 		for _, w := range v {
 			// w is *Number
 			var Value int
@@ -159,9 +170,11 @@ func (proofList SolLst) StringNum(val int) string {
 	}
 	return retVal
 }
-func (proofList SolLst) Exists(val int) bool {
 
-	for _, v := range proofList {
+// Exists Does a value exist in the solution
+func (sl SolLst) Exists(val int) bool {
+
+	for _, v := range sl {
 		for _, w := range v {
 			// w is *Number
 			var Value int
@@ -173,17 +186,21 @@ func (proofList SolLst) Exists(val int) bool {
 	}
 	return false
 }
-func (bob NumCol) Len() int {
+
+// Len is the number of items in the number collection
+func (nc NumCol) Len() int {
 	var arrayLen int
-	arrayLen = len(bob)
+	arrayLen = len(nc)
 	return arrayLen
 }
-func (i0 NumCol) Equal(i1 NumCol) bool {
-	if len(i0) != len(i1) {
+
+// Equal returns if both are equal
+func (nc NumCol) Equal(i1 NumCol) bool {
+	if len(nc) != len(i1) {
 		return false
 	}
-	for i := range i0 {
-		i0Val := i0[i].Val
+	for i := range nc {
+		i0Val := nc[i].Val
 		i1Val := i1[i].Val
 		if i0Val != i1Val {
 			return false
@@ -191,6 +208,8 @@ func (i0 NumCol) Equal(i1 NumCol) bool {
 	}
 	return true
 }
-func (bob SolLst) Len() int {
-	return len(bob)
+
+// Len of the count of number of solutions
+func (sl SolLst) Len() int {
+	return len(sl)
 }
