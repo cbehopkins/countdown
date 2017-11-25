@@ -34,6 +34,7 @@ func main() {
 	}
 }
 
+// UmNetStruct unmarshal net structure
 // FIXME tidy this up
 type UmNetStruct struct {
 	UseMult    bool  `json:"mul"`
@@ -41,6 +42,7 @@ type UmNetStruct struct {
 	Val        []int `json:"int"`
 }
 
+// UnmarshallNet Unmarshal the strict received from the network
 func UnmarshallNet(input []byte) (result []int, useMult bool, postResult bool) {
 	bob := &UmNetStruct{}
 	bob.Val = make([]int, 0, 6)
@@ -58,6 +60,8 @@ func UnmarshallNet(input []byte) (result []int, useMult bool, postResult bool) {
 	}
 	return
 }
+
+// HandleConnection Handle the incomming network connection
 func HandleConnection(conn net.Conn) {
 	var bob cntSlv.NumCol
 	var proofList cntSlv.SolLst

@@ -11,8 +11,11 @@ func (nm *NumMap) CountHelper(target int, sources []int) chan SolLst {
 
 	return permuteN(srcNumbers, nm)
 }
+
+// CountFastHelper is the fast version
+// actually not really any faster it turns out! (but uses less memory)
 func CountFastHelper(target int, sources []int, findShortest bool) string {
-	ps := NewFastPermInt(sources)
+	ps := newFastPermInt(sources)
 	tgt := target
 	if findShortest {
 		tgt = 0

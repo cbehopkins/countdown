@@ -4,11 +4,13 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"github.com/cbehopkins/countdown/cnt_slv"
 	"net"
 	"os"
+
+	"github.com/cbehopkins/countdown/cnt_slv"
 )
 
+// UmNetStruct Unmarshall net structure
 type UmNetStruct struct {
 	Val []int `json:"int"`
 }

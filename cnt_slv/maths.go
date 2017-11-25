@@ -126,7 +126,7 @@ func (foundValues *NumMap) make2To1(list NumCol) NumCol {
 		addSet, mulSet, subSet, divSet,
 		aGtB := foundValues.doMaths(list)
 
-	// Now Grab the memory
+	// Now grab the memory
 	//ret_list = found_values.aquire_numbers(num_to_make)
 	retList = make([]*Number, numToMake)
 	for i := range retList {

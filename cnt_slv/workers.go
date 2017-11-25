@@ -32,8 +32,10 @@ func workN(arrayIn NumCol, foundValues *NumMap, multipass bool) SolLst {
 		return SolLst{arrayIn}
 	} else if lenArrayIn == 2 {
 		var tmpList NumCol
+		// Generate every number by working the two
 		tmpList = foundValues.make2To1(arrayIn[0:2])
 		foundValues.addMany(tmpList...)
+		// and add the origioanl list on
 		retList = append(retList, tmpList, arrayIn)
 		return retList
 	}
@@ -47,8 +49,10 @@ func workN(arrayIn NumCol, foundValues *NumMap, multipass bool) SolLst {
 	// This will treat the input as {2,3),{4} it works the first list to get:
 	// {5,1} (from 2+3 and 3-2) and therefore returns {{5,4}, {1,4}}
 	// we then take each value in this list and work that to get {{9},{3}}
-	// the final list we want to return is {{5,4}, {1,4}, {9},{3}}
-	// the reason to not return {2,3,4} is so that in the grand scheme of things we can recurse these lists
+	// the final list we want to return is {{5,4}, {1,4}, {9},{3}, {2,3,4}}
+
+	// It's important to note that is arrayIn has length of n
+	// then workList will be a list of arrays of max length n-1
 	workList := newWrkLst(arrayIn)
 	// so by this stage we have something like {{{2},{3,4}}} or for a 4 variable: { {{2}, {3,4,5}}, {{2,3},{4,5}} }
 
@@ -141,11 +145,13 @@ func workN(arrayIn NumCol, foundValues *NumMap, multipass bool) SolLst {
 
 			var tmpList NumCol
 			tmpList = foundValues.make2To1(bobList)
-			foundValues.addMany(tmpList...)
-			retList = append(retList, tmpList, arrayIn)
+			//foundValues.addMany(tmpList...)
+			retList = append(retList, tmpList)
 			return true
 		}
 		workList.procWork(foundValues, workerFunc)
+		// Make sure we include the list that started it
+		retList = append(retList, arrayIn)
 	}
 	// Add the entire solution list found in the previous loop in one go
 	foundValues.addSol(retList, false)

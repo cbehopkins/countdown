@@ -177,7 +177,7 @@ func (ps *permStruct) workerNetSend(it NumCol, fv *NumMap) {
 
 	//////////
 	// Now send to an open connection
-	conn := <-ps.netChannels // Grab the connection for as little time as possible
+	conn := <-ps.netChannels // grab the connection for as little time as possible
 	fullMsg := string(text) + "\n"
 	//fmt.Printf("Sending::%s", full_msg)
 	//n, err:= fmt.Fprintf(conn, full_msg)

@@ -14,7 +14,7 @@ func (wl wrkLst) procWork(foundValues *NumMap, wf func(a, b *Number) bool) {
 	run := true
 	for _, workUnit := range wl.lst {
 		// Now we've extracted one work item,
-		// so conceptually  here we have {{2},{3,4,5,6}} or perhaps {{2},{3,4}} or {{2,3},{4,5}}
+		// so conceptually  here we have {{2},{3,4,5,6}} or perhaps {{2,3},{4,5,6}}
 
 		if foundValues.SelfTest {
 			// Sanity check for programming errors
@@ -27,8 +27,14 @@ func (wl wrkLst) procWork(foundValues *NumMap, wf func(a, b *Number) bool) {
 
 		unitA := workUnit[0]
 		unitB := workUnit[1]
+		// Return a list of all the numbers that can be made with this set
+		// i.e. {3,4} becomes {{3,4},{1},{7},{12}}
 		listA := workN(unitA, foundValues, false)
 		listB := workN(unitB, foundValues, false)
+		// Give me all the numbers piossible from the solutions list
+		// to cross with the others
+		// i.e. {{3,4},{1},{7},{12}} becomes {3,4,1,7,12}
+		// except that it is done without building a temporary array
 		gimmieA := newGimmie(listA)
 		gimmieB := newGimmie(listB)
 
@@ -47,11 +53,14 @@ func (wl wrkLst) procWork(foundValues *NumMap, wf func(a, b *Number) bool) {
 // NewWrkLst returns a new work list from a Number Collection
 // Easier to explain by example:
 // {2,3,4} -> {{2},{3,4}}
+//         -> {{2,3},{4}}
 // {2,3,4,5} -> {{2}, {3,4,5}}
 //           -> {{2,3},{4,5}}
+//           -> {{2,3,4},{5}}
 // {2,3,4,5,6} -> {{2},{3,4,5,6}}
 //             -> {{2,3},{4,5,6}}
 //             -> {{2,3,4},{5,6}}
+// etc
 // The consumer of this list of list (of list) will then feed each list length >1 into a the work+_n function
 // In order to get down to a {{a},{b}} which can then be worked
 // The important point is that even though the list we return may be indefinitly long

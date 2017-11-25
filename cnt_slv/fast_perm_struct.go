@@ -18,13 +18,13 @@ type fastPermStruct struct {
 func newFastPermStruct(arrayIn NumCol, foundValues *NumMap) *fastPermStruct {
 
 	values := arrayIn.Values()
-	itm := NewFastPermInt(values)
+	itm := newFastPermInt(values)
 	go itm.Worker(foundValues)
 	return itm
 }
 
-// NewFastPermInt good way to generate proofs
-func NewFastPermInt(values []int) *fastPermStruct {
+// newFastPermInt good way to generate proofs
+func newFastPermInt(values []int) *fastPermStruct {
 	itm := new(fastPermStruct)
 	p, err := permutation.NewPerm(values, nil)
 	if err != nil {
