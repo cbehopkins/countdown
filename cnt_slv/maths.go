@@ -3,8 +3,6 @@ package cntSlv
 import (
 	"fmt"
 	"log"
-
-	"github.com/tonnerre/golang-pretty"
 )
 
 // maths.go contains the functions that actually do the maths on a pair of numbers
@@ -103,7 +101,7 @@ func (foundValues *NumMap) AddItems(list []*Number, retList []*Number, currentNu
 	for i := savedCurrentNumberLoc; i < currentNumberLoc; i++ {
 		v := retList[i]
 		if v.Val <= 0 {
-			pretty.Println(v)
+			fmt.Println(v)
 			fmt.Printf("value %d is %d, %d, %d\n", i, v.Val, a, b)
 			fmt.Printf("add_set=%t, mul_set=%t, sub_set=%t, div_set=%t, a_gt_b=%t\n", addSet, mulSet, subSet, divSet, aGtB)
 			for j := savedCurrentNumberLoc; j < currentNumberLoc; j++ {
@@ -118,7 +116,7 @@ func (foundValues *NumMap) make2To1(list NumCol) NumCol {
 	// That can be generated from 2 input numbers
 	// organised in such a way that we know how we created them
 	if list.Len() != 2 {
-		pretty.Print(list)
+		log.Println(list)
 		log.Fatal("Invalid make2 list length")
 	}
 	var retList NumCol

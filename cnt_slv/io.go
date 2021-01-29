@@ -3,8 +3,6 @@ package cntSlv
 import (
 	"encoding/json"
 	"fmt"
-	//    		"os"
-	//	"github.com/tonnerre/golang-pretty"
 )
 
 //io.go is responsible for all the io stuff related to pushing the structures

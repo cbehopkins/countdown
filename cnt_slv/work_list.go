@@ -2,8 +2,6 @@ package cntSlv
 
 import (
 	"log"
-
-	"github.com/tonnerre/golang-pretty"
 )
 
 type wrkLst struct {
@@ -20,7 +18,7 @@ func (wl wrkLst) procWork(foundValues *NumMap, wf func(a, b *Number) bool) {
 			// Sanity check for programming errors
 			workUnitLength := workUnit.Len()
 			if workUnitLength != 2 {
-				pretty.Println(wl)
+				log.Println(wl)
 				log.Fatalf("Invalid work unit length, %d", workUnitLength)
 			}
 		}

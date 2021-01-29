@@ -394,7 +394,7 @@ func (ps *permStruct) Work() {
 func (ps *permStruct) SetPM(val int) {
 	ps.permuteMode = val
 }
-func runPermute(arrayIn NumCol, foundValues *NumMap, proofList chan SolLst) {
+func RunPermute(arrayIn NumCol, foundValues *NumMap, proofList chan SolLst) {
 	// If your number of workers is limited by access to the centralmap
 	// Then we have the ability to use several number maps and then merge them
 	// No system I have access to have enough CPUs for this to be an issue
@@ -409,6 +409,6 @@ func runPermute(arrayIn NumCol, foundValues *NumMap, proofList chan SolLst) {
 }
 func permuteN(arrayIn NumCol, foundValues *NumMap) (proofList chan SolLst) {
 	returnProofs := make(chan SolLst, 16)
-	go runPermute(arrayIn, foundValues, returnProofs)
+	go RunPermute(arrayIn, foundValues, returnProofs)
 	return returnProofs
 }

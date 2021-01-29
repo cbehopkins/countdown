@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"log"
 	"strconv"
-
-	"github.com/tonnerre/golang-pretty"
 )
 
 // number.go contains the basics of manipulating our number type
@@ -225,13 +223,12 @@ func (nm *Number) ProveSol() int {
 		// This is a source value
 		return nm.Val
 	} else if len(nm.list) == 1 {
-		pretty.Print(nm)
+		fmt.Println(nm)
 		log.Fatal("Error invalid list length")
 		return 0
 	} else {
 		for _, v := range nm.list {
 			if firstRun {
-				//pretty.Print(v)
 				firstRun = false
 				runningTotal = v.ProveSol()
 			} else {
@@ -254,7 +251,7 @@ func (nm *Number) ProveSol() int {
 			}
 		}
 		if runningTotal != nm.Val {
-			pretty.Println(nm)
+			fmt.Println(nm)
 
 			fmt.Println("We calculated ", runningTotal, nm.String())
 			log.Fatal("Failed to self check solution")
@@ -314,7 +311,6 @@ func (nm *Number) String() string {
 	var proof string
 	var val int
 	val = nm.Val
-	//pretty.Print(i)
 	if nm.list == nil {
 		//proof = fmt.Sprintf("%d", val)
 		proof = strconv.Itoa(val)
