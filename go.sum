@@ -1,0 +1,6 @@
+github.com/cbehopkins/permutation v0.0.0-20190130092141-418a8aa8cc40 h1:TwpFqo0k0LdyfsgN1Z+TMh+usJK3TEwcgMt/G0ur3zw=
+github.com/cbehopkins/permutation v0.0.0-20190130092141-418a8aa8cc40/go.mod h1:iSFZrtOb96mkToYscD54Q1IoXZplW1i9Gm8eTQ1+1MQ=
+github.com/pkg/profile v1.5.0 h1:042Buzk+NhDI+DeSAA62RwJL8VAuZUMQZUjCsRz1Mug=
+github.com/pkg/profile v1.5.0/go.mod h1:qBsxPvzyUincmltOk6iyRVxHYg4adc0OFOv72ZdLa18=
+github.com/wayeast/permutation v0.0.0-20170616040828-b1574f07fc5d h1:yQrKC8q1khJDx4IK4shF7ClNKBKESs0HqCDBmhYMoFw=
+github.com/wayeast/permutation v0.0.0-20170616040828-b1574f07fc5d/go.mod h1:V1w6qy4hfWwLngjl0roXG5zk2s8l9ER3eMbjknLJmhY=
