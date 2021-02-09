@@ -1,4 +1,4 @@
-package cntSlv
+package cntslv
 
 import (
 	"bufio"
@@ -15,8 +15,6 @@ import (
 const (
 	// LonMap - one map for all workers
 	LonMap = iota
-	// FastMap - actually slower but uses arrays for much lower memory usage
-	FastMap
 	// ParMap One Map for each worker, then merge them at the end
 	ParMap
 	// NetMap try and use the Network
@@ -103,47 +101,7 @@ func (ps *permStruct) workerPar(it NumCol, fv *NumMap) {
 	ps.mapMergeChan <- arthur
 	ps.coallateDone <- true
 }
-func (pr Proofs) addProofsNm(fv *NumMap) {
-	for i, v := range pr {
-		proofTxt := v.String()
-		if proofTxt != "" {
-			numP := parseString(proofTxt)
-			if numP == nil {
-				log.Fatal("Failed to parse", proofTxt)
-			}
-			if numP.Val == i {
-				fv.Add(i, numP)
-			} else {
-				log.Fatal("Proved wrong value", i, numP.Val, proofTxt, numP)
-			}
-		}
-	}
-}
 
-// createPl is used to create a new proof list from a NumCol
-// i.e. fudge between the two formats
-func (it NumCol) createPl() *proofLst {
-	inP := newProofLst(0)
-	for _, v := range it.Values() {
-		inP.Init(v)
-	}
-	return inP
-}
-func (ps *permStruct) workerFast(it NumCol, fv *NumMap) {
-	if !fv.Solved() {
-
-		inP := it.createPl()
-		// Get a data structure to put the result into
-		proofs := getProofs()
-		// Populate it
-		proofs.wrkFast(*inP)
-		// Now convert the result into something we can use
-		proofs.addProofsNm(fv)
-
-	}
-	ps.coallateDone <- true
-	ps.channelTokens <- true
-}
 func (ps *permStruct) workerLone(it NumCol, fv *NumMap) {
 	if !fv.Solved() {
 		ps.coallateChan <- workN(it, fv, false)
@@ -264,29 +222,31 @@ func (ps *permStruct) setupConns(fv *NumMap) (extraTokens int, allFail bool) {
 		} else {
 			log.Fatal(err)
 		}
-	} else {
+		allFail = true
+		return
+	}
 
-		scanner := bufio.NewScanner(file)
-		for scanner.Scan() {
-			var server string
-			server = scanner.Text()
-			fmt.Printf("Trying to connect to server at %s\n", server)
-			for i := 0; i < 3; i++ { // Allow 4 connections per server
-				// connect to a socket
-				conn, err := net.Dial("tcp", server)
-				if err != nil {
-					fmt.Printf("Dial error: %v\n", err)
-				} else {
-					netSuccess = true
-					ps.netChannels <- conn
-					extraTokens++
-				}
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		var server string
+		server = scanner.Text()
+		fmt.Printf("Trying to connect to server at %s\n", server)
+		for i := 0; i < 3; i++ { // Allow 4 connections per server
+			// connect to a socket
+			conn, err := net.Dial("tcp", server)
+			if err != nil {
+				fmt.Printf("Dial error: %v\n", err)
+			} else {
+				netSuccess = true
+				ps.netChannels <- conn
+				extraTokens++
 			}
 		}
-		if err := scanner.Err(); err != nil {
-			log.Fatal(err)
-		}
 	}
+	if err := scanner.Err(); err != nil {
+		log.Fatal(err)
+	}
+
 	if !netSuccess {
 		fmt.Println("Failed to connect to any servers")
 		allFail = true
@@ -354,15 +314,17 @@ func (ps *permStruct) NumWorkers(cnt int) {
 		extraTokens, allFail := ps.setupConns(ps.fv)
 		cnt += extraTokens
 		if allFail {
-			ps.SetPM(FastMap)
+			ps.SetPM(LonMap)
 		}
 	}
 	for i := 0; i < cnt; i++ {
 		ps.channelTokens <- true
 	}
 }
-func (ps *permStruct) Launch(bob NumCol) {
 
+// Launch a worker
+// i.e. spawn the thing that will do the calc
+func (ps *permStruct) Launch(bob NumCol) {
 	switch ps.permuteMode {
 	case ParMap:
 		go ps.workerPar(bob, ps.fv)
@@ -370,18 +332,18 @@ func (ps *permStruct) Launch(bob NumCol) {
 		go ps.workerLone(bob, ps.fv)
 	case NetMap:
 		go ps.workerNetSend(bob, ps.fv)
-	case FastMap:
-		go ps.workerFast(bob, ps.fv)
 	default:
 		log.Fatal("Unknown Permute Mode")
 	}
-
 }
+
+// Work the permutation struct
 func (ps *permStruct) Work() {
 	p := ps.p
 	for result, err := p.Next(); err == nil; result, err = p.Next() {
 		// To control the number of workers we run at once we need to grab a token
 		// remember to return it later
+		// FIXME switch this to use a worker pool instead of tokens
 		<-ps.channelTokens
 		//fmt.Printf("%3d permutation: left %3d, GoRs %3d\r", p.Index()-1, p.Left(), runtime.NumGoroutine())
 		bob, ok := result.(NumCol)
@@ -391,15 +353,18 @@ func (ps *permStruct) Work() {
 		ps.Launch(bob)
 	}
 }
+
+// SetPM set the permute mode
 func (ps *permStruct) SetPM(val int) {
 	ps.permuteMode = val
 }
+
+// RunPermute runs a permutation across a supplied set of numbers
 func RunPermute(arrayIn NumCol, foundValues *NumMap, proofList chan SolLst) {
 	// If your number of workers is limited by access to the centralmap
 	// Then we have the ability to use several number maps and then merge them
 	// No system I have access to have enough CPUs for this to be an issue
 	// However the framework seems to be there
-	// TBD make this a comannd line variable
 
 	pstrct := newPermStruct(arrayIn, foundValues)
 	requiredTokens := 64
@@ -407,7 +372,7 @@ func RunPermute(arrayIn NumCol, foundValues *NumMap, proofList chan SolLst) {
 	pstrct.Workers(proofList)
 	foundValues.LastNumMap()
 }
-func permuteN(arrayIn NumCol, foundValues *NumMap) (proofList chan SolLst) {
+func permuteN(arrayIn NumCol, foundValues *NumMap) chan SolLst {
 	returnProofs := make(chan SolLst, 16)
 	go RunPermute(arrayIn, foundValues, returnProofs)
 	return returnProofs

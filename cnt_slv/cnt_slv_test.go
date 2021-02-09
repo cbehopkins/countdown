@@ -1,4 +1,4 @@
-package cntSlv
+package cntslv
 
 import (
 	"fmt"
@@ -7,8 +7,6 @@ import (
 
 	"sync"
 	"testing"
-
-	"github.com/pkg/profile"
 )
 
 type testset struct {
@@ -106,7 +104,7 @@ func TestMany(t *testing.T) {
 		foundValues := NewNumMap() //pass it the proof list so it can auto-check for validity at the end
 		foundValues.SelfTest = true
 		foundValues.UseMult = true
-		foundValues.PermuteMode = FastMap
+		foundValues.PermuteMode = LonMap
 		// Other permute modes just use too much memory
 		//foundValues.PermuteMode = rand.Intn(2) // Select a random mode
 		//fmt.Println("Running with permute mode", foundValues.PermuteMode)
@@ -159,7 +157,7 @@ func TestFail(t *testing.T) {
 		foundValues.SelfTest = false
 		foundValues.UseMult = true
 		// Other modes use too much memory
-		foundValues.PermuteMode = FastMap
+		foundValues.PermuteMode = LonMap
 		for _, itm := range item.Selected {
 			bob.AddNum(itm, foundValues)
 		}
@@ -338,8 +336,6 @@ func ModeString(v int) string {
 	switch v {
 	case LonMap:
 		return "LonMap"
-	case FastMap:
-		return "FstMap"
 	case ParMap:
 		return "ParMap"
 	case NetMap:
@@ -374,43 +370,5 @@ func BenchmarkModes(b *testing.B) {
 				b.Run(runString, runFunc)
 			}
 		}
-	}
-}
-func TestFps(t *testing.T) {
-	defer profile.Start().Stop()
-	for _, MapLength := range []int{4, 5, 6} {
-		foundValues, bob := randomNumMap(MapLength)
-		runFunc := func(tb *testing.T) {
-			for i := 0; i < 20; i++ {
-				//tb.StopTimer()
-				fv := foundValues.Duplicate()
-				pstrct := newFastPermStruct(bob, fv)
-				//tb.StartTimer()
-				pstrct.Work(0)
-				fv.LastNumMap()
-			}
-		}
-		runString := ""
-		runString += "Ml" + strconv.Itoa(MapLength)
-		t.Run(runString, runFunc)
-	}
-}
-func BenchmarkFps(b *testing.B) {
-	defer profile.Start().Stop()
-	for _, MapLength := range []int{4, 5, 6} {
-		foundValues, bob := randomNumMap(MapLength)
-		runFunc := func(tb *testing.B) {
-			for i := 0; i < tb.N; i++ {
-				tb.StopTimer()
-				fv := foundValues.Duplicate()
-				pstrct := newFastPermStruct(bob, fv)
-				tb.StartTimer()
-				pstrct.Work(0)
-				fv.LastNumMap()
-			}
-		}
-		runString := ""
-		runString += "Ml" + strconv.Itoa(MapLength)
-		b.Run(runString, runFunc)
 	}
 }

@@ -1,4 +1,4 @@
-package cntSlv
+package cntslv
 
 import (
 	"fmt"
@@ -205,7 +205,6 @@ func (nm *Number) tidyOperators() {
 			newNum := NewNumber(nm.Val, myList1, "-", (aPlusC.difficulty + myList1[1].difficulty + 1))
 
 			nm = newNum
-			//i.TidyOperators()
 			nm.ProveSol()
 		}
 	}

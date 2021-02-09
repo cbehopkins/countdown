@@ -1,4 +1,4 @@
-package cntSlv
+package cntslv
 
 import (
 	"log"

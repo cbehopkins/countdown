@@ -1,4 +1,4 @@
-package cntSlv
+package cntslv
 
 // declare.go is where misc things are declared
 
@@ -10,17 +10,4 @@ func (nm *NumMap) CountHelper(target int, sources []int) chan SolLst {
 	nm.SetTarget(target)
 
 	return permuteN(srcNumbers, nm)
-}
-
-// CountFastHelper is the fast version
-// actually not really any faster it turns out! (but uses less memory)
-func CountFastHelper(target int, sources []int, findShortest bool) string {
-	ps := newFastPermInt(sources)
-	tgt := target
-	if findShortest {
-		tgt = 0
-	}
-	rPs := ps.GetProofs(tgt)
-	return rPs.Get(target).String()
-
 }
