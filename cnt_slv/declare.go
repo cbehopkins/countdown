@@ -1,4 +1,4 @@
-package cntslv
+package cntSlv
 
 // declare.go is where misc things are declared
 

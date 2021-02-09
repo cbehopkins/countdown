@@ -15,7 +15,6 @@ func main() {
 	//defer profile.Start(profile.MemProfile).Stop()
 
 	var target int
-	var proofList cntslv.SolLst
 	var bob cntslv.NumCol
 
 	var sources []int

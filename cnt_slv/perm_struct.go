@@ -1,4 +1,4 @@
-package cntslv
+package cntSlv
 
 import (
 	"bufio"
