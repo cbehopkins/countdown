@@ -22,7 +22,6 @@ func (nc NumCol) String() string {
 	}
 	sort.Ints(tmpArray)
 	for _, v := range tmpArray {
-		//ret_str = ret_str + comma + fmt.Sprintf("%d", v)
 		retStr = retStr + comma + strconv.Itoa(v)
 		comma = ","
 	}
@@ -49,7 +48,6 @@ func (nc *NumCol) AddNum(inputNum int, foundValues *NumMap) {
 	a := NewNumber(inputNum, emptyList, "I", 0)
 	foundValues.Add(inputNum, a)
 	*nc = append(*nc, a)
-
 }
 
 // Values is all the integher values in a number colleciton
@@ -86,7 +84,6 @@ func (nc NumCol) Equal(i1 NumCol) bool {
 // Tidy up the list
 func (nc NumCol) Tidy() {
 	for _, v := range nc {
-		//v.ProveSol()
 		v.TidyDoubles()
 		v.tidyOperators()
 		v.ProveSol() // Just in case the Tidy functions have got things wrong

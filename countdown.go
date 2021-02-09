@@ -67,9 +67,7 @@ func main() {
 	fmt.Println("Finished looking for proofs")
 	profString := foundValues.GetProof(target)
 	fmt.Println("It's:", profString)
-	// TBD on seeks option add in tidy printing of the final solution
 	if *tgflg == 0 {
 		foundValues.PrintProofs()
 	}
-
 }

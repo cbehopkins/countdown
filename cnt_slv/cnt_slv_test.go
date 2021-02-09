@@ -3,7 +3,6 @@ package cntSlv
 import (
 	"fmt"
 	"math/rand"
-	"strconv"
 
 	"sync"
 	"testing"
@@ -315,14 +314,14 @@ func randomNumMap(cnt int) (*NumMap, NumCol) {
 }
 func BenchmarkWorknMulti(b *testing.B) {
 	foundValues, bob := randomNumMap(6)
-	parModes := []bool{true, false}
+	parModes := []bool{false}
 	for _, parMode := range parModes {
 		runFunc := func(tb *testing.B) {
 			for i := 0; i < tb.N; i++ {
 				tb.StopTimer()
 				fv := foundValues.Duplicate()
 				tb.StartTimer()
-				workN(bob, fv, parMode)
+				workN(bob, fv)
 			}
 		}
 		runString := ""
@@ -345,30 +344,31 @@ func ModeString(v int) string {
 	}
 
 }
-func BenchmarkModes(b *testing.B) {
-	for _, MapLength := range []int{4, 5, 6} {
-		foundValues, bob := randomNumMap(MapLength)
-		for _, parMode := range []int{0, 1, 2} {
-			for _, numWorkers := range []int{1, 2, 4, 16, 64} {
-				runFunc := func(tb *testing.B) {
-					for i := 0; i < tb.N; i++ {
-						tb.StopTimer()
-						fv := foundValues.Duplicate()
-						pstrct := newPermStruct(bob, fv)
-						pstrct.SetPM(parMode)
-						requiredTokens := numWorkers
-						pstrct.NumWorkers(requiredTokens)
-						tb.StartTimer()
-						pstrct.Workers(nil)
-						fv.LastNumMap()
-					}
-				}
-				runString := "PM:"
-				runString += ModeString(parMode)
-				runString += "_Nw" + strconv.Itoa(numWorkers)
-				runString += "_Ml" + strconv.Itoa(MapLength)
-				b.Run(runString, runFunc)
-			}
-		}
-	}
-}
+
+// func BenchmarkModes(b *testing.B) {
+// 	for _, MapLength := range []int{4, 5, 6} {
+// 		foundValues, bob := randomNumMap(MapLength)
+// 		for _, parMode := range []int{0, 1, 2} {
+// 			for _, numWorkers := range []int{1, 2, 4, 16, 64} {
+// 				runFunc := func(tb *testing.B) {
+// 					for i := 0; i < tb.N; i++ {
+// 						tb.StopTimer()
+// 						fv := foundValues.Duplicate()
+// 						pstrct := newPermStruct(bob, fv)
+// 						pstrct.SetPM(parMode)
+// 						requiredTokens := numWorkers
+// 						pstrct.NumWorkers(requiredTokens)
+// 						tb.StartTimer()
+// 						pstrct.Workers(nil)
+// 						fv.LastNumMap()
+// 					}
+// 				}
+// 				runString := "PM:"
+// 				runString += ModeString(parMode)
+// 				runString += "_Nw" + strconv.Itoa(numWorkers)
+// 				runString += "_Ml" + strconv.Itoa(MapLength)
+// 				b.Run(runString, runFunc)
+// 			}
+// 		}
+// 	}
+// }

@@ -27,8 +27,8 @@ func (wl wrkLst) procWork(foundValues *NumMap, wf func(a, b *Number) bool) {
 		unitB := workUnit[1]
 		// Return a list of all the numbers that can be made with this set
 		// i.e. {3,4} becomes {{3,4},{1},{7},{12}}
-		listA := workN(unitA, foundValues, false)
-		listB := workN(unitB, foundValues, false)
+		listA := workN(unitA, foundValues)
+		listB := workN(unitB, foundValues)
 		// Give me all the numbers piossible from the solutions list
 		// to cross with the others
 		// i.e. {{3,4},{1},{7},{12}} becomes {3,4,1,7,12}
@@ -69,7 +69,7 @@ func newWrkLst(arrayA NumCol) wrkLst {
 
 	lenArrayM1 := arrayA.Len() - 1
 
-	for i := 0; i < (lenArrayM1); i++ {
+	for i := 0; i < lenArrayM1; i++ {
 		var arA, arB NumCol
 		// for 3 items in arrar
 		// {0},{1,2}, {0,1}{2}

@@ -34,8 +34,8 @@ func TestWeirdWork(t *testing.T) {
 
 	proof400 = append(proof400, mk400) // Add on the work item that is the source
 	proof327 = append(proof327, mk327) // Add on the work item that is the source
-	sol400 := workN(mk400, foundValues, false)
-	sol327 := workN(mk327, foundValues, false)
+	sol400 := workN(mk400, foundValues)
+	sol327 := workN(mk327, foundValues)
 
 	log.Println("Find 400", sol400.StringNum(400))
 	log.Println("Find 327", sol327.StringNum(327))
@@ -50,8 +50,8 @@ func TestWeirdWork(t *testing.T) {
 			unitB = workUnit[1]
 			if mk400.Equal(unitA) {
 				if mk327.Equal(unitB) {
-					tmp400 := workN(unitA, foundValues, false)
-					tmp327 := workN(unitB, foundValues, false)
+					tmp400 := workN(unitA, foundValues)
+					tmp327 := workN(unitB, foundValues)
 					if !tmp400.Exists(400) {
 						return false
 					}
@@ -65,7 +65,7 @@ func TestWeirdWork(t *testing.T) {
 		return false
 	}
 	log.Println("Its:", chkFunc())
-	solCombined := workN(combined, foundValues, false)
+	solCombined := workN(combined, foundValues)
 	log.Println("Find 727", solCombined.StringNum(727))
 }
 func tstWorker(fc func(NumCol, *NumMap)) {
@@ -96,7 +96,7 @@ func tstWorker(fc func(NumCol, *NumMap)) {
 func TestWorkn(t *testing.T) {
 	var tmp SolLst
 	fun := func(nc NumCol, fv *NumMap) {
-		tmp = workN(nc, fv, false)
+		tmp = workN(nc, fv)
 	}
 	tstWorker(fun)
 	if !tmp.Exists(727) {

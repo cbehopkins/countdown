@@ -13,9 +13,8 @@ import (
 
 // NumMapAtom is the structure that holds the Number itself
 type NumMapAtom struct {
-	a      int // Document these fields when you understand them
-	b      *Number
-	report bool
+	a int // Document these fields when you understand them
+	b *Number
 }
 
 // NumMap is the main map to a number and how we get there
@@ -136,7 +135,6 @@ func (nmp *NumMap) Add(a int, b *Number) {
 	var atomic NumMapAtom
 	atomic.a = b.Val
 	atomic.b = b
-	atomic.report = false
 	nmp.inputChannel <- atomic
 }
 
@@ -148,7 +146,6 @@ func (nmp *NumMap) addMany(b ...*Number) {
 		var atomic NumMapAtom
 		atomic.a = c.Val
 		atomic.b = c
-		atomic.report = false
 		arr[i] = atomic
 	}
 	nmp.inputChannelArray <- arr
@@ -234,8 +231,7 @@ func (nmp *NumMap) addWorker() {
 		for number := range nmp.inputChannel {
 			nmp.mapLock.Lock()
 			nmp.constLk.RLock()
-			// Somewhere in the code we *might* want to add one at a time
-			// FIXME This is bad design and we should remove it
+			// We use this when we create a lone number
 			nmp.addItem(number.a, number.b, false)
 			nmp.constLk.RUnlock()
 			nmp.mapLock.Unlock()

@@ -1,7 +1,6 @@
 package cntSlv
 
 import (
-	"fmt"
 	"log"
 )
 
@@ -30,8 +29,8 @@ func checkReturnList(proofList SolLst, foundValues *NumMap) {
 		_, ok := valueCheck[v]
 		// Every value in found_values should be in the list of values returned
 		if !ok {
-			fmt.Printf("%d in Number map, but is not in the proof list, which has %d Items\n", v, proofList.Len())
-			fmt.Println(proofList)
+			log.Printf("%d in Number map, but is not in the proof list, which has %d Items\n", v, proofList.Len())
+			log.Println(proofList)
 			log.Fatal("Done")
 		}
 	}
@@ -44,11 +43,11 @@ func (proofList SolLst) findProof(toFind int) {
 			proofString := w.String()
 			if Value == toFind {
 				foundVal = true
-				fmt.Printf("Found Value %d, = %s\n", Value, proofString)
+				log.Printf("Found Value %d, = %s\n", Value, proofString)
 			}
 		}
 	}
 	if !foundVal {
-		fmt.Println("Unable to find value :", toFind)
+		log.Println("Unable to find value :", toFind)
 	}
 }
