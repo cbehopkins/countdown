@@ -28,17 +28,13 @@ type umNetStruct struct {
 }
 
 type permStruct struct {
-	p               *permutation.Permutator
-	numPermutations int
-	permuteMode     int
-	fv              *NumMap
-	permuteChan     chan NumCol
-	netChannels     chan net.Conn
-	coallateChan    chan SolLst
-	mapMergeChan    chan *NumMap
-	activeConns     sync.WaitGroup
-	coallateWg      sync.WaitGroup
-	mwg             *sync.WaitGroup
+	p            *permutation.Permutator
+	permuteMode  int
+	fv           *NumMap
+	permuteChan  chan NumCol
+	netChannels  chan net.Conn
+	coallateChan chan SolLst
+	mapMergeChan chan *NumMap
 }
 
 func newPermStruct(arrayIn NumCol, foundValues *NumMap) *permStruct {
@@ -53,25 +49,22 @@ func newPermStruct(arrayIn NumCol, foundValues *NumMap) *permStruct {
 	itm.fv = foundValues
 	// Local copy as we may override it
 	itm.permuteMode = foundValues.PermuteMode
-	itm.numPermutations = p.Left()
 	if foundValues.PermuteMode == NetMap {
 		itm.netChannels = make(chan net.Conn, 512)
 	}
 	itm.permuteChan = make(chan NumCol)
 	itm.coallateChan = make(chan SolLst, 200)
 	itm.mapMergeChan = make(chan *NumMap)
-	itm.mwg = new(sync.WaitGroup)
 	return itm
 }
 func (ps *permStruct) workerPar(it NumCol, fv *NumMap) {
 	// This is the parallel worker function
 	// It creates a new number map, populates it by working the incoming number set
 	// then merges the number map back into the main numbermap
-	// This is useful if we have more processes than we know what to do with
+	// This is useful if we have congestion on the main map
 
 	//////////
 	// Check if already solved
-
 	if fv.Solved() {
 		return
 	}
@@ -102,12 +95,12 @@ func (ps *permStruct) workerLone(it NumCol, fv *NumMap) {
 	}
 }
 func (ps *permStruct) workerNetSend(it NumCol, fv *NumMap) {
-	fv.constLk.RLock()
-	useMult := fv.UseMult
-	fv.constLk.RUnlock()
 	if fv.Solved() {
 		return
 	}
+	fv.constLk.RLock()
+	useMult := fv.UseMult
+	fv.constLk.RUnlock()
 
 	valArray := make([]int, len(it))
 	for i, j := range it {
@@ -255,25 +248,25 @@ func (ps *permStruct) doneControl() {
 	close(ps.mapMergeChan)
 }
 func (ps *permStruct) Workers(proofList chan SolLst, numWorkers int) {
-	// Launch the thing what will actually do the work
-
-	ps.Launch(numWorkers)
 	go ps.Work() // The thing that generates Permutations to work
-	ps.mwg.Add(1)
+	coallateWg := ps.Launch(numWorkers)
+	var mwg sync.WaitGroup
+	// one thing -  outputMerge - to wait for
+	mwg.Add(1)
 	if ps.permuteMode == ParMap {
-		ps.mwg.Add(1)
-		go ps.mergeFuncWorker()
+		mwg.Add(1)
+		go ps.mergeFuncWorker(&mwg)
 	}
 
 	// Thsi will if needed merge together the resuls and then Done mwg
-	go ps.outputMerge(proofList)
-	ps.coallateWg.Wait()
+	go ps.outputMerge(proofList, &mwg)
+	coallateWg.Wait()
 	// This will run until Work and workers it spawned are complete then Done mwg
 	ps.doneControl()
 	// wait for all then Done on mwg
-	ps.Wait()
+	mwg.Wait()
 }
-func (ps *permStruct) outputMerge(proofList chan SolLst) {
+func (ps *permStruct) outputMerge(proofList chan SolLst, mwg *sync.WaitGroup) {
 	for v := range ps.coallateChan {
 		v.RemoveDuplicates()
 		if proofList != nil {
@@ -283,20 +276,19 @@ func (ps *permStruct) outputMerge(proofList chan SolLst) {
 	if proofList != nil {
 		close(proofList)
 	}
-	ps.mwg.Done()
+	mwg.Done()
 }
-func (ps *permStruct) mergeFuncWorker() {
+func (ps *permStruct) mergeFuncWorker(mwg *sync.WaitGroup) {
 	mergeReport := false // Turn off reporting of new numbers for first run
 	for v := range ps.mapMergeChan {
 		ps.fv.Merge(v, mergeReport)
 		mergeReport = true
 	}
-	ps.mwg.Done()
+	mwg.Done()
 }
-func (ps *permStruct) Wait() {
-	ps.mwg.Wait()
-}
-func (ps *permStruct) NumWorkers(cnt int) {
+
+// NumNetWorkers deal with network needing more workers
+func (ps *permStruct) NumNetWorkers(cnt int) int {
 	if ps.permuteMode == NetMap {
 		extraTokens, allFail := ps.setupConns(ps.fv)
 		cnt += extraTokens
@@ -304,12 +296,13 @@ func (ps *permStruct) NumWorkers(cnt int) {
 			ps.SetPM(LonMap)
 		}
 	}
-	// REVISIT what happens here
+	return cnt
 }
 
 // Launch a worker
 // i.e. spawn the thing that will do the calc
-func (ps *permStruct) Launch(cnt int) {
+func (ps *permStruct) Launch(cnt int) *sync.WaitGroup {
+	var coallateWg sync.WaitGroup
 	type workerFunc func(NumCol, *NumMap)
 	var wf workerFunc
 	switch ps.permuteMode {
@@ -327,11 +320,14 @@ func (ps *permStruct) Launch(cnt int) {
 		for bob := range ps.permuteChan {
 			wf(bob, ps.fv)
 		}
-		ps.coallateWg.Done()
+		coallateWg.Done()
 	}
+
+	coallateWg.Add(cnt)
 	for i := 0; i < cnt; i++ {
 		go runner()
 	}
+	return &coallateWg
 }
 
 // Work the permutation struct
@@ -363,8 +359,7 @@ func runPermute(arrayIn NumCol, foundValues *NumMap, proofList chan SolLst) {
 
 	pstrct := newPermStruct(arrayIn, foundValues)
 	numWorkers := 8
-	pstrct.NumWorkers(numWorkers)
-	pstrct.coallateWg.Add(numWorkers)
+	numWorkers = pstrct.NumNetWorkers(numWorkers)
 	pstrct.Workers(proofList, numWorkers)
 	foundValues.LastNumMap()
 }

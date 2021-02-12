@@ -37,6 +37,9 @@ func (sl SolLst) Exists(val int) bool {
 	for _, v := range sl {
 		for _, w := range v {
 			// w is *Number
+			if w == nil {
+				continue
+			}
 			var Value int
 			Value = w.Val
 			if Value == val {
@@ -53,6 +56,9 @@ func (sl SolLst) StringNum(val int) string {
 	for _, v := range sl {
 		for _, w := range v {
 			// w is *Number
+			if w == nil {
+				continue
+			}
 			var Value int
 			Value = w.Val
 			if Value == val {

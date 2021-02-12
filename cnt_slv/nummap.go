@@ -143,6 +143,9 @@ func (nmp *NumMap) Add(a int, b *Number) {
 func (nmp *NumMap) addMany(b ...*Number) {
 	arr := make([]NumMapAtom, len(b))
 	for i, c := range b {
+		if c == nil {
+			continue
+		}
 		var atomic NumMapAtom
 		atomic.a = c.Val
 		atomic.b = c
@@ -158,6 +161,9 @@ func (nmp *NumMap) addSol(a SolLst, report bool) {
 	for _, b := range a {
 		for _, c := range b {
 			//fmt.Println("Ading Value:", c.Val)
+			if c == nil {
+				continue
+			}
 			nmp.addItem(c.Val, c, false)
 		}
 	}

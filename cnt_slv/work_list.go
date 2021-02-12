@@ -38,6 +38,7 @@ func (wl wrkLst) procWork(foundValues *NumMap, wf func(a, b *Number) bool) {
 
 		for aNum, errA := gimmieA.next(); (errA == nil) && run; aNum, errA = gimmieA.next() {
 			for bNum, errB := gimmieB.next(); (errB == nil) && run; bNum, errB = gimmieB.next() {
+				// FIXME pregenerate array that wf will write into
 				run = wf(aNum, bNum)
 			}
 			gimmieB.reset()
@@ -46,6 +47,65 @@ func (wl wrkLst) procWork(foundValues *NumMap, wf func(a, b *Number) bool) {
 			return
 		}
 	}
+}
+
+func (wl wrkLst) procWorkSelf(foundValues *NumMap) SolLst {
+	wf := func(aNum, bNum *Number, tmpList NumCol, currentNumberLoc int) int {
+		if aNum == nil || aNum.Val == 0 {
+			// Nothing new to add
+			return currentNumberLoc
+		}
+		if bNum == nil || bNum.Val == 0 {
+			// Nothing new to add
+			return currentNumberLoc
+		}
+
+		return doCalcOn2(tmpList, NumCol{aNum, bNum}, currentNumberLoc)
+	}
+	var retList SolLst
+	for _, workUnit := range wl.lst {
+		// Now we've extracted one work item,
+		// so conceptually  here we have {{2},{3,4,5,6}} or perhaps {{2,3},{4,5,6}}
+
+		if foundValues.SelfTest {
+			// Sanity check for programming errors
+			workUnitLength := workUnit.Len()
+			if workUnitLength != 2 {
+				log.Println(wl)
+				log.Fatalf("Invalid work unit length, %d", workUnitLength)
+			}
+		}
+
+		unitA := workUnit[0]
+		unitB := workUnit[1]
+		// Return a list of all the numbers that can be made with this set
+		// i.e. {3,4} becomes {{3,4},{1},{7},{12}}
+		listA := workN(unitA, foundValues)
+		listB := workN(unitB, foundValues)
+		// Give me all the numbers piossible from the solutions list
+		// to cross with the others
+		// i.e. {{3,4},{1},{7},{12}} becomes {3,4,1,7,12}
+		// except that it is done without building a temporary array
+		gimmieA := newGimmie(listA)
+		gimmieB := newGimmie(listB)
+
+		wfCount := gimmieA.items() * gimmieB.items()
+		// Now grab the memory
+		tmpList := make(NumCol, 4*wfCount)
+		tstLst := make([]Number, 4*wfCount)
+		for i := range tmpList {
+			tmpList[i] = &tstLst[i]
+		}
+		currentNumberLoc := 0
+		for aNum, errA := gimmieA.next(); errA == nil; aNum, errA = gimmieA.next() {
+			for bNum, errB := gimmieB.next(); errB == nil; bNum, errB = gimmieB.next() {
+				currentNumberLoc = wf(aNum, bNum, tmpList, currentNumberLoc)
+			}
+			gimmieB.reset()
+		}
+		retList = append(retList, tmpList[0:currentNumberLoc])
+	}
+	return retList
 }
 
 // NewWrkLst returns a new work list from a Number Collection
@@ -78,9 +138,9 @@ func newWrkLst(arrayA NumCol) wrkLst {
 		arB = make(NumCol, (arrayA.Len() - (i + 1)))
 
 		copy(arB, arrayA[(i+1):(arrayA.Len())])
-		var workItem SolLst // {{2},{3,4}};
+		workItem := SolLst{arA, arB} // {{2},{3,4}};
 		// a work item always contains 2 elements to the array
-		workItem = append(workItem, arA, arB)
+		//workItem = append(workItem, arA, arB)
 		workList = append(workList, workItem)
 	}
 	return wrkLst{lst: workList}

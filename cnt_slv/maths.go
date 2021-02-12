@@ -138,3 +138,115 @@ func (foundValues *NumMap) make2To1(list NumCol) NumCol {
 
 	return retList
 }
+func (foundValues *NumMap) make2To1mod(list NumCol) NumCol {
+	// This is (conceptually) returning a list of numbers
+	// That can be generated from 2 input numbers
+	// organised in such a way that we know how we created them
+	if list.Len() != 2 {
+		log.Println(list)
+		log.Fatal("Invalid make2 list length")
+	}
+	var retList NumCol
+
+	// Now grab the memory
+	retList = make(NumCol, 4)
+	for i := range retList {
+		retList[i] = new(Number) // OPtimise to not make all of them
+	}
+
+	currentNumberLoc := 0
+	_ = doCalcOn2(retList, list, currentNumberLoc)
+
+	return retList
+}
+func (foundValues *NumMap) make3To1mod(list NumCol) NumCol {
+	// This is (conceptually) returning a list of numbers
+	// That can be generated from 2 input numbers
+	// organised in such a way that we know how we created them
+	if foundValues.SelfTest && list.Len() != 3 {
+		log.Println(list)
+		log.Fatal("Invalid make3 list length")
+	}
+	var retList NumCol
+
+	// Now grab the memory
+	retList = make([]*Number, 4*3+4*4*3)
+	for i := range retList {
+		retList[i] = new(Number) // OPtimise to not make all of them
+	}
+	currentNumberLoc := 0
+	retList, _ = foundValues.make3To1bones(list, retList, currentNumberLoc)
+	return retList
+}
+func (foundValues *NumMap) make3To1bones(list NumCol, retList []*Number, currentNumberLoc int) (NumCol, int) {
+	for _, v := range list {
+		if v == nil {
+			log.Println("Odd")
+		}
+	}
+
+	currentNumberLoc = doCalcOn2(retList, list[0:2], currentNumberLoc)
+	currentNumberLoc = doCalcOn2(retList, list[1:3], currentNumberLoc)
+	currentNumberLoc = doCalcOn2(retList, NumCol{list[0], list[2]}, currentNumberLoc)
+	for j := 0; j < 3; j++ {
+		for i := 0; i < 4; i++ {
+			firstPart := (j * 4) + i
+			secondPart := (j + 2) % 3
+			if foundValues.SelfTest {
+				if secondPart > 2 {
+					log.Println("WTF", secondPart, i, j)
+				}
+				if firstPart > 11 {
+					log.Println("WTF", firstPart, i, j)
+				}
+			}
+			if retList[firstPart] == nil {
+				continue
+			}
+			if retList[secondPart] == nil {
+				continue
+			}
+			currentNumberLoc = doCalcOn2(retList, NumCol{retList[firstPart], list[secondPart]}, currentNumberLoc)
+		}
+	}
+
+	return retList, currentNumberLoc
+}
+func doCalcOn2(retList []*Number, list NumCol, currentNumberLoc int) int {
+	a := list[0].Val
+	b := list[1].Val
+	if a == 0 || b == 0 {
+		return currentNumberLoc
+	}
+	aGtB := a > b
+	amb0 := ((a % b) == 0)
+	bma0 := ((b % a) == 0)
+
+	retList[currentNumberLoc].configure(a+b, list, "+", 1)
+	currentNumberLoc++
+	retList[currentNumberLoc].configure(a*b, list, "*", 2)
+	currentNumberLoc++
+	if aGtB {
+		retList[currentNumberLoc].configure(a-b, list, "-", 1)
+	} else {
+		retList[currentNumberLoc].configure(b-a, list, "--", 1)
+	}
+	currentNumberLoc++
+
+	if aGtB {
+		if !amb0 {
+			retList[currentNumberLoc].configure(a/b, list, "/", 3)
+		} else {
+			retList[currentNumberLoc] = nil
+		}
+	} else {
+		if !bma0 {
+			retList[currentNumberLoc].configure(b/a, list, "\\", 3)
+		} else {
+			retList[currentNumberLoc] = nil
+		}
+	}
+	currentNumberLoc++
+
+	return currentNumberLoc
+}

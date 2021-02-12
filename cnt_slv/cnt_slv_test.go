@@ -314,20 +314,25 @@ func randomNumMap(cnt int) (*NumMap, NumCol) {
 }
 func BenchmarkWorknMulti(b *testing.B) {
 	foundValues, bob := randomNumMap(6)
-	parModes := []bool{false}
-	for _, parMode := range parModes {
+	type wrkr func(NumCol, *NumMap) SolLst
+	type wrkrTest struct {
+		fc   wrkr
+		desc string
+	}
+	runners := []wrkrTest{
+		{workNmod, "mod"},
+		{workNold, "old"},
+	}
+	for _, runner := range runners {
 		runFunc := func(tb *testing.B) {
 			for i := 0; i < tb.N; i++ {
 				tb.StopTimer()
 				fv := foundValues.Duplicate()
 				tb.StartTimer()
-				workN(bob, fv)
+				runner.fc(bob, fv)
 			}
 		}
-		runString := ""
-		if parMode {
-			runString += "par"
-		}
+		runString := runner.desc
 		b.Run(runString, runFunc)
 	}
 }

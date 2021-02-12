@@ -22,9 +22,14 @@ func newGimmie(arrayIn SolLst) *gimmie {
 	itm.solList = arrayIn
 	return itm
 }
-func (g *gimmie) items() (items int) {
+func (g *gimmie) items() int {
+	items := 0
 	for _, v := range g.solList {
-		items = items + v.Len()
+		for _, w := range v {
+			if w != nil {
+				items++
+			}
+		}
 	}
 	return items
 }
@@ -36,12 +41,13 @@ func (g *gimmie) reset() {
 
 func (g *gimmie) next() (result *Number, err error) {
 	for ; g.outer < g.solList.Len(); g.outer++ {
-		inLstP := g.solList[g.outer]
-		inLst := inLstP // It's okay these should be stack variables as they do not leave the scope
+		inLst := g.solList[g.outer]
 		for g.inner < inLst.Len() {
 			result = inLst[g.inner]
 			g.inner++
-			return
+			if result != nil {
+				return
+			}
 		}
 		g.inner = 0
 	}
