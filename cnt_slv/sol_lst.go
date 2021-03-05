@@ -69,46 +69,6 @@ func (sl SolLst) StringNum(val int) string {
 	return retVal
 }
 
-// RemoveDuplicates from the list
-func (sl *SolLst) RemoveDuplicates() {
-	// The purpose of this is to go through the supplied list
-	// and modify the list to only include unique sets
-	// any sets that produce the same string are considered identical
-	// that is the collection contains the same values
-	if false {
-		solMap := make(map[string]NumCol)
-		var delQueue []int
-		for i := 0; i < len(*sl); i++ {
-			var v NumCol
-			var t SolLst
-			t = *sl
-			v = t[i]
-			str := v.String()
-
-			_, ok := solMap[str]
-			if !ok {
-				//fmt.Println("Added ", v)
-				solMap[str] = v
-			} else {
-				//fmt.Printf("%s already exists\n", string)
-				//pretty.Println(t1)
-				//fmt.Printf("It is now, %d", i);
-				//pretty.Println(t0);
-				delQueue = append(delQueue, i)
-			}
-		}
-
-		for i := len(delQueue); i > 0; i-- {
-			//fmt.Printf("DQ#%d, Len=%d\n",i, len(del_queue))
-			v := delQueue[i-1]
-			//fmt.Println("You've asked to delete",v);
-			l1 := *sl
-			*sl = append(l1[:v], l1[v+1:]...)
-		}
-		//fmt.Printf("In Check, OrigLen %d, New Len %d\n",orig_len,len(*item))
-	}
-}
-
 // Tidy up the list
 func (sl SolLst) Tidy() {
 	for _, v := range sl {

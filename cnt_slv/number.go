@@ -42,14 +42,12 @@ func lessNumber(i, j interface{}) bool {
 }
 func (nm *Number) configure(inputA int, inputB []*Number, operation string, difficult int) {
 	nm.Val = inputA
-
 	nm.list = inputB
 	nm.operation = operation
 	nm.difficulty = difficult
 	for _, v := range inputB {
 		nm.difficulty = nm.difficulty + v.difficulty
 	}
-
 }
 
 //ProofLen returns the length of a proof
@@ -241,8 +239,16 @@ func (nm *Number) ProveSol() int {
 				case "*":
 					runningTotal = runningTotal * v.ProveSol()
 				case "/":
+					if (runningTotal % v.ProveSol()) != 0 {
+						log.Println("Divide had a remainder", runningTotal, v.ProveSol())
+						return 0
+					}
 					runningTotal = runningTotal / v.ProveSol()
 				case "\\":
+					if (v.ProveSol() % runningTotal) != 0 {
+						log.Println("Divide had a remainder", v.ProveSol(), runningTotal)
+						return 0
+					}
 					runningTotal = v.ProveSol() / runningTotal
 				default:
 					log.Fatal("Unknown operation type")
@@ -258,31 +264,7 @@ func (nm *Number) ProveSol() int {
 		return runningTotal
 	}
 }
-func (nm Number) calculate() int {
-	if nm.Val > 0 {
-		return nm.Val
-	}
-	var operateFunc func(a, b int) int
 
-	if len(nm.list) > 1 {
-		operateFunc = determineOperator(nm.operation)
-	}
-	switch len(nm.list) {
-	case 0:
-		log.Fatal("len 0")
-	case 1:
-		return nm.list[0].calculate()
-	case 2:
-		return operateFunc(nm.list[0].calculate(), nm.list[1].calculate())
-	default:
-		runningVal := 0
-		for _, v := range nm.list {
-			runningVal = operateFunc(runningVal, v.calculate())
-		}
-		return runningVal
-	}
-	return 0
-}
 func (nm *Number) setDifficulty() int {
 	if (nm.list == nil) || (len(nm.list) == 0) {
 		nm.difficulty = 0
@@ -316,6 +298,8 @@ func (nm *Number) String() string {
 	} else {
 		proof = ""
 		op := ""
+		NumCol(nm.list).Tidy()
+
 		for _, v := range nm.list {
 
 			switch nm.operation {

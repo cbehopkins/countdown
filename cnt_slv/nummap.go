@@ -2,6 +2,7 @@ package cntSlv
 
 import (
 	"fmt"
+	"log"
 	"sync"
 )
 
@@ -79,10 +80,14 @@ func (nmp *NumMap) Solved() bool {
 
 // Keys returns the integers that form the numbers
 func (nmp *NumMap) Keys() []int {
-	// FIXME should we not grab a lock here?
+	nmp.mapLock.RLock()
+	defer nmp.mapLock.RUnlock()
 	retList := make([]int, len(nmp.nmp))
 	i := 0
 	for key := range nmp.nmp {
+		if key == 0 {
+			fmt.Println("WTF")
+		}
 		retList[i] = key
 		i++
 	}
@@ -102,10 +107,11 @@ func (nmp *NumMap) Numbers() []*Number {
 
 // Compare two number maps return true if they contain the same numbers
 func (nmp *NumMap) Compare(can *NumMap) bool {
-	pass := true
 	for _, key := range can.Keys() {
 		_, ok := nmp.nmp[key]
 		if !ok {
+			log.Println("Cannot find", key, "in reference")
+			log.Println(can.GetProof(key))
 			return false
 		}
 	}
@@ -113,25 +119,19 @@ func (nmp *NumMap) Compare(can *NumMap) bool {
 	for _, key := range nmp.Keys() {
 		_, ok := can.nmp[key]
 		if !ok {
+			log.Println("Cannot find ", key, "in candidate")
 			return false
 		}
 	}
-	return pass
-}
-
-func (nmp *NumMap) acquireNumbers(numToMake int) NumCol {
-	poolNum := make([]Number, numToMake)
-	poolPnt := make([]*Number, numToMake)
-	for i := range poolNum {
-		j := &poolNum[i]
-		poolPnt[i] = j
-	}
-	return poolPnt
+	return true
 }
 
 // Add a number we have found
 // and how we found it
 func (nmp *NumMap) Add(a int, b *Number) {
+	if nmp.SelfTest && (a == 0 || b.Val == 0) {
+		fmt.Println("We should not add 0")
+	}
 	var atomic NumMapAtom
 	atomic.a = b.Val
 	atomic.b = b
@@ -146,11 +146,19 @@ func (nmp *NumMap) addMany(b ...*Number) {
 		if c == nil {
 			continue
 		}
+		if c.Val == 0 {
+			fmt.Println("We should not add many 0")
+		}
 		var atomic NumMapAtom
 		atomic.a = c.Val
 		atomic.b = c
 		arr[i] = atomic
 	}
+	// for i, v := range arr {
+	// 	if v.a == 0 || v.b.Val == 0 {
+	// 		fmt.Println("Bugger:", i)
+	// 	}
+	// }
 	nmp.inputChannelArray <- arr
 }
 
@@ -160,6 +168,13 @@ func (nmp *NumMap) addSol(a SolLst, report bool) {
 	nmp.constLk.RLock()
 	for _, b := range a {
 		for _, c := range b {
+			if c == nil {
+				// With the pre-allocated map, then we end up with some nil numbers
+				continue
+			}
+			if c.Val == 0 {
+				fmt.Println("WTF?")
+			}
 			//fmt.Println("Ading Value:", c.Val)
 			if c == nil {
 				continue
@@ -188,6 +203,9 @@ func (nmp *NumMap) Merge(a *NumMap, report bool) {
 
 func (nmp *NumMap) addItem(value int, stct *Number, report bool) {
 	// The lock on the map structure must be grabbed outside
+	if value == 0 {
+		fmt.Println("We should not add 0")
+	}
 	retr, ok := nmp.nmp[value]
 	if !ok {
 		//item.nmp[value] = stct
@@ -226,6 +244,9 @@ func (nmp *NumMap) addWorker() {
 			// Adding a number is an expensive task
 			// so we grab a lock, and do several at once
 			for _, number := range numberBlock {
+				if number.a == 0 {
+					continue
+				}
 				nmp.addItem(number.a, number.b, false)
 			}
 			nmp.constLk.RUnlock()
@@ -246,17 +267,6 @@ func (nmp *NumMap) addWorker() {
 	}()
 	waiter.Wait()
 	close(nmp.doneChannel)
-}
-
-// GetVals returns all the possible numbers we have found
-func (nmp *NumMap) GetVals() []int {
-	retList := make([]int, len(nmp.nmp))
-	i := 0
-	for _, v := range nmp.nmp {
-		retList[i] = v.Val
-		i++
-	}
-	return retList
 }
 
 // LastNumMap says we have done adding numbers
@@ -308,6 +318,7 @@ func (nmp *NumMap) PrintProofs() {
 func (nmp *NumMap) GetProof(target int) string {
 	val, ok := nmp.nmp[target]
 	if ok {
+		_ = val.ProveSol() // This does its own error reporting
 		return val.String()
 	}
 	return "No Proof Found"

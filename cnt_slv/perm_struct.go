@@ -258,7 +258,7 @@ func (ps *permStruct) Workers(proofList chan SolLst, numWorkers int) {
 		go ps.mergeFuncWorker(&mwg)
 	}
 
-	// Thsi will if needed merge together the resuls and then Done mwg
+	// This will if needed merge together the results and then Done mwg
 	go ps.outputMerge(proofList, &mwg)
 	coallateWg.Wait()
 	// This will run until Work and workers it spawned are complete then Done mwg
@@ -268,7 +268,6 @@ func (ps *permStruct) Workers(proofList chan SolLst, numWorkers int) {
 }
 func (ps *permStruct) outputMerge(proofList chan SolLst, mwg *sync.WaitGroup) {
 	for v := range ps.coallateChan {
-		v.RemoveDuplicates()
 		if proofList != nil {
 			proofList <- v
 		}

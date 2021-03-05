@@ -50,15 +50,6 @@ func (nc *NumCol) AddNum(inputNum int, foundValues *NumMap) {
 	*nc = append(*nc, a)
 }
 
-// Values is all the integher values in a number colleciton
-func (nc NumCol) Values() []int {
-	retInts := make([]int, len(nc))
-	for i, v := range nc {
-		retInts[i] = v.Val
-	}
-	return retInts
-}
-
 // Len is the number of items in the number collection
 func (nc NumCol) Len() int {
 	var arrayLen int

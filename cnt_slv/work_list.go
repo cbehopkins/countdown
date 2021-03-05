@@ -8,47 +8,6 @@ type wrkLst struct {
 	lst []SolLst
 }
 
-func (wl wrkLst) procWork(foundValues *NumMap, wf func(a, b *Number) bool) {
-	run := true
-	for _, workUnit := range wl.lst {
-		// Now we've extracted one work item,
-		// so conceptually  here we have {{2},{3,4,5,6}} or perhaps {{2,3},{4,5,6}}
-
-		if foundValues.SelfTest {
-			// Sanity check for programming errors
-			workUnitLength := workUnit.Len()
-			if workUnitLength != 2 {
-				log.Println(wl)
-				log.Fatalf("Invalid work unit length, %d", workUnitLength)
-			}
-		}
-
-		unitA := workUnit[0]
-		unitB := workUnit[1]
-		// Return a list of all the numbers that can be made with this set
-		// i.e. {3,4} becomes {{3,4},{1},{7},{12}}
-		listA := workN(unitA, foundValues)
-		listB := workN(unitB, foundValues)
-		// Give me all the numbers piossible from the solutions list
-		// to cross with the others
-		// i.e. {{3,4},{1},{7},{12}} becomes {3,4,1,7,12}
-		// except that it is done without building a temporary array
-		gimmieA := newGimmie(listA)
-		gimmieB := newGimmie(listB)
-
-		for aNum, errA := gimmieA.next(); (errA == nil) && run; aNum, errA = gimmieA.next() {
-			for bNum, errB := gimmieB.next(); (errB == nil) && run; bNum, errB = gimmieB.next() {
-				// FIXME pregenerate array that wf will write into
-				run = wf(aNum, bNum)
-			}
-			gimmieB.reset()
-		}
-		if !run {
-			return
-		}
-	}
-}
-
 func (wl wrkLst) procWorkSelf(foundValues *NumMap) SolLst {
 	wf := func(aNum, bNum *Number, tmpList NumCol, currentNumberLoc int) int {
 		if aNum == nil || aNum.Val == 0 {

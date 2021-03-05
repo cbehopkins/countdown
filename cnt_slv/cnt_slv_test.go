@@ -23,7 +23,7 @@ func newTestSet(target int, seld ...int) *testset {
 	return item
 }
 func initMany() []testset {
-	retLst := make([]testset, 9)
+	retLst := make([]testset, 10)
 	retLst[0] = *newTestSet(833, 50, 3, 3, 1, 10, 7)
 	retLst[1] = *newTestSet(78, 8, 9, 10, 75, 25, 100)
 	retLst[2] = *newTestSet(540, 4, 5, 7, 2, 4, 8)
@@ -36,6 +36,7 @@ func initMany() []testset {
 	// (100 + 9*3) = 327
 	// (400+327)= 727
 	retLst[8] = *newTestSet(727, 50, 100, 9, 1, 9, 3)
+	retLst[9] = *newTestSet(690, 100, 50, 8, 8, 7, 9)
 	return retLst
 }
 
@@ -66,18 +67,11 @@ func TestOne(t *testing.T) {
 
 	fmt.Println("Starting permute")
 	returnProofs := permuteN(bob, foundValues)
-	cleanupPacker := 0
 	for v := range returnProofs {
 		//fmt.Println("Proof Received")
 		if foundValues.SelfTest {
 			// This unused code is handy if we want a proof list
 			proofList = append(proofList, v...)
-			cleanupPacker++
-			if cleanupPacker > 10 {
-				checkReturnList(proofList, foundValues)
-				proofList.RemoveDuplicates()
-				cleanupPacker = 0
-			}
 		}
 	}
 	if foundValues.Solved() {
@@ -104,9 +98,6 @@ func TestMany(t *testing.T) {
 		foundValues.SelfTest = true
 		foundValues.UseMult = true
 		foundValues.PermuteMode = LonMap
-		// Other permute modes just use too much memory
-		//foundValues.PermuteMode = rand.Intn(2) // Select a random mode
-		//fmt.Println("Running with permute mode", foundValues.PermuteMode)
 		for _, itm := range item.Selected {
 			bob.AddNum(itm, foundValues)
 		}
@@ -123,12 +114,12 @@ func TestMany(t *testing.T) {
 				proofList = append(proofList, v...)
 				cleanupPacker++
 				if cleanupPacker > 1000 {
-					proofList.RemoveDuplicates()
 					cleanupPacker = 0
 				}
 			}
 		}
 		if foundValues.Solved() {
+			t.Log("Proof is:", foundValues.GetProof(item.Target))
 			t.Log("Proof Found")
 		} else {
 			t.Log("Couldn't solve")
@@ -173,7 +164,6 @@ func TestFail(t *testing.T) {
 				proofList = append(proofList, v...)
 				cleanupPacker++
 				if cleanupPacker > 10 {
-					proofList.RemoveDuplicates()
 					cleanupPacker = 0
 				}
 			}
@@ -212,15 +202,12 @@ func TestIt(t *testing.T) {
 			proofList = append(proofList, v...)
 			cleanupPacker++
 			if cleanupPacker > 1000 {
-				proofList.RemoveDuplicates()
 				cleanupPacker = 0
 			}
 		}
 	}
 }
 func TestReduction(t *testing.T) {
-	// Now we are using fast worker, this test does not apply
-
 	var proofList0 SolLst
 	var proofList1 SolLst
 	var bob0 NumCol
@@ -268,17 +255,15 @@ func TestReduction(t *testing.T) {
 		mwg.Done()
 	}()
 	mwg.Wait()
-	fmt.Println("Everything should have finished by now, start pringting proofs")
+	fmt.Println("Everything should have finished by now, start printing proofs")
 	// So by this point found_values* and proof_list* should both have the same contents - if not in the same order
-	if foundValues1.Compare(foundValues0) {
-	} else {
+	if !foundValues1.Compare(foundValues0) {
 		fmt.Println("The new FV were different")
 		t.Fail()
 	}
 
 	var proofList2 SolLst
 	proofList2 = append(proofList2, proofList0...)
-	proofList0.RemoveDuplicates()
 	fmt.Printf("Size Before %d; Size after %d\n", len(proofList2), len(proofList0))
 	foundValues2 := NewNumMap()
 	foundValues2.SelfTest = true
@@ -286,9 +271,10 @@ func TestReduction(t *testing.T) {
 
 	foundValues2.addSol(proofList0, false)
 	foundValues2.LastNumMap()
-	if foundValues2.Compare(foundValues0) {
-	} else {
+
+	if !foundValues2.Compare(foundValues0) {
 		fmt.Println("The new FV were different")
+		fmt.Println(foundValues2.Numbers())
 		t.Fail()
 	}
 }
@@ -312,6 +298,8 @@ func randomNumMap(cnt int) (*NumMap, NumCol) {
 	}
 	return foundValues, bob
 }
+
+// Keeping it around after the code removed as a template
 func BenchmarkWorknMulti(b *testing.B) {
 	foundValues, bob := randomNumMap(6)
 	type wrkr func(NumCol, *NumMap) SolLst
@@ -320,8 +308,7 @@ func BenchmarkWorknMulti(b *testing.B) {
 		desc string
 	}
 	runners := []wrkrTest{
-		{workNmod, "mod"},
-		{workNold, "old"},
+		{workN, "old"},
 	}
 	for _, runner := range runners {
 		runFunc := func(tb *testing.B) {
