@@ -146,7 +146,7 @@ func (nmp *NumMap) addMany(b ...*Number) {
 		if c == nil {
 			continue
 		}
-		if c.Val == 0 {
+		if nmp.SelfTest && c.Val == 0 {
 			fmt.Println("We should not add many 0")
 		}
 		var atomic NumMapAtom
@@ -154,9 +154,11 @@ func (nmp *NumMap) addMany(b ...*Number) {
 		atomic.b = c
 		arr[i] = atomic
 	}
-	// for i, v := range arr {
-	// 	if v.a == 0 || v.b.Val == 0 {
-	// 		fmt.Println("Bugger:", i)
+	// if nmp.SelfTest {
+	// 	for i, v := range arr {
+	// 		if v.a == 0 || v.b.Val == 0 {
+	// 			fmt.Println("Bugger:", i)
+	// 		}
 	// 	}
 	// }
 	nmp.inputChannelArray <- arr
@@ -172,13 +174,12 @@ func (nmp *NumMap) addSol(a SolLst, report bool) {
 				// With the pre-allocated map, then we end up with some nil numbers
 				continue
 			}
-			if c.Val == 0 {
-				fmt.Println("WTF?")
-			}
-			//fmt.Println("Ading Value:", c.Val)
-			if c == nil {
+			if nmp.SelfTest && c.Val == 0 {
+				log.Fatal("logic error receiving 0s")
 				continue
 			}
+			//fmt.Println("Ading Value:", c.Val)
+
 			nmp.addItem(c.Val, c, false)
 		}
 	}
@@ -203,7 +204,7 @@ func (nmp *NumMap) Merge(a *NumMap, report bool) {
 
 func (nmp *NumMap) addItem(value int, stct *Number, report bool) {
 	// The lock on the map structure must be grabbed outside
-	if value == 0 {
+	if nmp.SelfTest && value == 0 {
 		fmt.Println("We should not add 0")
 	}
 	retr, ok := nmp.nmp[value]
@@ -318,7 +319,9 @@ func (nmp *NumMap) PrintProofs() {
 func (nmp *NumMap) GetProof(target int) string {
 	val, ok := nmp.nmp[target]
 	if ok {
-		_ = val.ProveSol() // This does its own error reporting
+		if nmp.SelfTest {
+			_ = val.ProveSol() // This does its own error reporting
+		}
 		return val.String()
 	}
 	return "No Proof Found"

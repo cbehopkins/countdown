@@ -31,7 +31,6 @@ type permStruct struct {
 	p            *permutation.Permutator
 	permuteMode  int
 	fv           *NumMap
-	permuteChan  chan NumCol
 	netChannels  chan net.Conn
 	coallateChan chan SolLst
 	mapMergeChan chan *NumMap
@@ -52,7 +51,6 @@ func newPermStruct(arrayIn NumCol, foundValues *NumMap) *permStruct {
 	if foundValues.PermuteMode == NetMap {
 		itm.netChannels = make(chan net.Conn, 512)
 	}
-	itm.permuteChan = make(chan NumCol)
 	itm.coallateChan = make(chan SolLst, 200)
 	itm.mapMergeChan = make(chan *NumMap)
 	return itm
@@ -120,8 +118,6 @@ func (ps *permStruct) workerNetSend(it NumCol, fv *NumMap) {
 	// Now send to an open connection
 	conn := <-ps.netChannels // grab the connection for as little time as possible
 	fullMsg := string(text) + "\n"
-	//fmt.Printf("Sending::%s", full_msg)
-	//n, err:= fmt.Fprintf(conn, full_msg)
 	n, err := conn.Write([]byte(fullMsg))
 	if err != nil {
 		//fmt.Printf("Send Error %d in worker_net_send: %v\n", n, err)
@@ -144,7 +140,12 @@ func (ps *permStruct) workerNetSend(it NumCol, fv *NumMap) {
 	//////////
 	// Take the message text we've got back and interpret it
 	if len(message) > 3 {
-		fv.MergeJSON(message)
+		err = fv.MergeJSON(message)
+		if err != nil {
+			fmt.Println("Merge Error", err)
+			// FIXME
+			return
+		}
 	}
 
 	ps.netChannels <- conn
@@ -175,12 +176,10 @@ func (ps *permStruct) workerNetClose(fv *NumMap) {
 		// Take the message text we've got back and interpret it
 		parMerge.Add(1)
 		go func() {
-			fv.MergeJSON(message)
-			//err := fv.FastUnMarshalJson([]byte(message))
-			//if (err !=nil) {
-			//	fmt.Printf("Fast Unmarshall error %v\n", err)
-			//	return // FIXME
-			//}
+			err := fv.MergeJSON(message)
+			if err != nil {
+				fmt.Printf("Merge json error: %v\n", err)
+			}
 			parMerge.Done()
 		}()
 	}
@@ -247,9 +246,29 @@ func (ps *permStruct) doneControl() {
 	close(ps.coallateChan)
 	close(ps.mapMergeChan)
 }
+
+// Work the permutation struct
+// That is get permulations and send them on the
+// toWork Chan
+func (ps *permStruct) generatePermutations() chan NumCol {
+	permuteChan := make(chan NumCol)
+	go func() {
+		p := ps.p
+		for result, err := p.Next(); err == nil; result, err = p.Next() {
+			bob, ok := result.(NumCol)
+			if !ok {
+				log.Fatalf("Error Type conversion problem")
+			}
+			permuteChan <- bob
+		}
+		close(permuteChan)
+	}()
+	return permuteChan
+}
+
 func (ps *permStruct) Workers(proofList chan SolLst, numWorkers int) {
-	go ps.Work() // The thing that generates Permutations to work
-	coallateWg := ps.Launch(numWorkers)
+	permuteChan := ps.generatePermutations() // The thing that generates Permutations to work
+	coallateWg := ps.Launch(numWorkers, permuteChan)
 	var mwg sync.WaitGroup
 	// one thing -  outputMerge - to wait for
 	mwg.Add(1)
@@ -292,7 +311,7 @@ func (ps *permStruct) NumNetWorkers(cnt int) int {
 		extraTokens, allFail := ps.setupConns(ps.fv)
 		cnt += extraTokens
 		if allFail {
-			ps.SetPM(LonMap)
+			ps.permuteMode = LonMap
 		}
 	}
 	return cnt
@@ -300,7 +319,7 @@ func (ps *permStruct) NumNetWorkers(cnt int) int {
 
 // Launch a worker
 // i.e. spawn the thing that will do the calc
-func (ps *permStruct) Launch(cnt int) *sync.WaitGroup {
+func (ps *permStruct) Launch(cnt int, permuteChan chan NumCol) *sync.WaitGroup {
 	var coallateWg sync.WaitGroup
 	type workerFunc func(NumCol, *NumMap)
 	var wf workerFunc
@@ -316,8 +335,8 @@ func (ps *permStruct) Launch(cnt int) *sync.WaitGroup {
 	}
 
 	runner := func() {
-		for bob := range ps.permuteChan {
-			wf(bob, ps.fv)
+		for set := range permuteChan {
+			wf(set, ps.fv)
 		}
 		coallateWg.Done()
 	}
@@ -329,31 +348,11 @@ func (ps *permStruct) Launch(cnt int) *sync.WaitGroup {
 	return &coallateWg
 }
 
-// Work the permutation struct
-// That is get permulations and send them on the
-// toWork Chan
-func (ps *permStruct) Work() {
-	p := ps.p
-	for result, err := p.Next(); err == nil; result, err = p.Next() {
-		bob, ok := result.(NumCol)
-		if !ok {
-			log.Fatalf("Error Type conversion problem")
-		}
-		ps.permuteChan <- bob
-	}
-	close(ps.permuteChan)
-}
-
-// SetPM set the permute mode
-func (ps *permStruct) SetPM(val int) {
-	ps.permuteMode = val
-}
-
 // runPermute runs a permutation across a supplied set of numbers
 func runPermute(arrayIn NumCol, foundValues *NumMap, proofList chan SolLst) {
 	// If your number of workers is limited by access to the centralmap
 	// Then we have the ability to use several number maps and then merge them
-	// No system I have access to have enough CPUs for this to be an issue
+	// No system I have access to has enough CPUs for this to be an issue
 	// However the framework seems to be there
 
 	pstrct := newPermStruct(arrayIn, foundValues)

@@ -2,7 +2,6 @@ package cntSlv
 
 import (
 	"encoding/json"
-	"fmt"
 )
 
 //io.go is responsible for all the io stuff related to pushing the structures
@@ -64,7 +63,7 @@ func (item *NumMap) AddJSONNum(input JSONNum) (newNumber Number) {
 }
 
 // MarshalJSON takes the nummap and turns it into a json struct
-func (item *NumMap) MarshalJSON() (output []byte, err error) {
+func (item *NumMap) MarshalJSON() ([]byte, error) {
 	thingList := NewJSONStruct(len(item.nmp))
 
 	for _, v := range item.nmp {
@@ -72,28 +71,18 @@ func (item *NumMap) MarshalJSON() (output []byte, err error) {
 		thingList.Add(tmp)
 	}
 
-	//output, err = json.MarshalIndent(thing_list, "", "    ")
-	output, err = json.Marshal(thingList)
-	//if err != nil {
-	//	fmt.Printf("error: %v\n", err)
-	//}
-
-	//s := string(output)
-	//fmt.Println(s)
-	return
+	return json.Marshal(thingList)
 }
 
 // UnMarshalJSON takes in a json struct and adds the
 // numbers to the nummap
-func (item *NumMap) UnMarshalJSON(input []byte) (err error) {
+func (item *NumMap) UnMarshalJSON(input []byte) error {
 	v := NewJSONStruct(0)
-	err = json.Unmarshal(input, v)
+	err := json.Unmarshal(input, v)
 	if err != nil {
-		//fmt.Printf("error: %v", err)
-		return
+		return err
 	}
 	for _, j := range v.List {
-		//fmt.Printf("Value of %d\n", j.Val)
 		item.AddJSONNum(j)
 	}
 	// At the end populate difficulty and prove the solutions for our sanity
@@ -102,44 +91,17 @@ func (item *NumMap) UnMarshalJSON(input []byte) (err error) {
 		j.ProveSol()
 		j.setDifficulty()
 	}
-	return
-}
-
-// FastUnMarshalJSON - quikcer lesss inteligable version of above
-func (item *NumMap) FastUnMarshalJSON(input []byte) (err error) {
-	v := NewJSONStruct(0)
-	err = json.Unmarshal(input, v)
-	if err != nil {
-		fmt.Printf("error: %v", err)
-		return
-	}
-	for _, j := range v.List {
-		//fmt.Printf("Value of %d\n", j.Val)
-		item.AddJSONNum(j)
-	}
-	return
-}
-
-// ImportJSON - just read in and print out
-// in proof like format
-func ImportJSON(message string) {
-	fv := NewNumMap()
-	err := fv.UnMarshalJSON([]byte(message))
-	if err != nil {
-		fmt.Printf("error: %v\n", err)
-		return
-	}
-	fv.PrintProofs()
+	return nil
 }
 
 // MergeJSON Use merge to get in a new json message
-func (item *NumMap) MergeJSON(message string) {
+func (item *NumMap) MergeJSON(message string) error {
 	fv := NewNumMap()
 	err := fv.UnMarshalJSON([]byte(message))
 	if err != nil {
-		fmt.Printf("error: %v\n", err)
-		return
+		// FIXME wrap this error
+		return err
 	}
-	//fv.PrintProofs()
 	item.Merge(fv, true)
+	return nil
 }

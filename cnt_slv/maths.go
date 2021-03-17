@@ -34,50 +34,48 @@ func (foundValues *NumMap) make3To1(list NumCol) NumCol {
 	// This is (conceptually) returning a list of numbers
 	// That can be generated from 2 input numbers
 	// organised in such a way that we know how we created them
-	if foundValues.SelfTest && list.Len() != 3 {
-		log.Println(list)
-		log.Fatal("Invalid make3 list length")
-	}
-	var retList NumCol
-
-	// Now grab the memory
-	retList = make([]*Number, 4*3+4*4*3)
-	// for i := range retList {
-	// 	retList[i] = new(Number) // OPtimise to not make all of them
-	// }
-	currentNumberLoc := 0
-	retList, _ = foundValues.make3To1bones(list, retList, currentNumberLoc)
-
-	return retList
-}
-func (foundValues *NumMap) make3To1bones(list NumCol, retList []*Number, currentNumberLoc int) (NumCol, int) {
-	for _, v := range list {
-		if v == nil {
-			log.Println("Odd")
+	INPUT_LEN := 3
+	if foundValues.SelfTest {
+		if list.Len() != INPUT_LEN {
+			log.Println(list)
+			log.Fatal("Invalid make3 list length")
+		}
+		for _, v := range list {
+			if v == nil {
+				log.Println("Odd")
+			}
 		}
 	}
+	var retList NumCol
+	OPERAND_RESULT_CNT := 4
+	// Now grab the memory
+	retList = make([]*Number, OPERAND_RESULT_CNT*3+OPERAND_RESULT_CNT*4*3)
+	currentNumberLoc := 0
 
-	currentNumberLoc = doCalcOn2(retList, list[0:2], currentNumberLoc)
-	currentNumberLoc = doCalcOn2(retList, list[1:3], currentNumberLoc)
-	currentNumberLoc = doCalcOn2(retList, NumCol{list[0], list[2]}, currentNumberLoc)
-	for j := 0; j < 3; j++ {
-		for i := 0; i < 4; i++ {
-			firstPart := (j * 4) + i
-			secondPart := (j + 2) % 3
+	// Pairwise combination of 3 numbers, requires 3 calculations
+	currentNumberLoc = doCalcOn2(retList, list[0:2], currentNumberLoc)                // secondPart = 2
+	currentNumberLoc = doCalcOn2(retList, list[1:3], currentNumberLoc)                // secondPart = 0
+	currentNumberLoc = doCalcOn2(retList, NumCol{list[0], list[2]}, currentNumberLoc) // secondPart = 1
+	for j := 0; j < INPUT_LEN; j++ {
+		// The outer loop selects a value from the input list
+		secondPart := (j + (INPUT_LEN - 1)) % INPUT_LEN
+
+		for i := 0; i < OPERAND_RESULT_CNT; i++ {
+			firstPart := (j * OPERAND_RESULT_CNT) + i
 			if foundValues.SelfTest {
-				if secondPart > 2 {
-					log.Println("WTF", secondPart, i, j)
-				}
-				if firstPart > 11 {
+				if firstPart > ((OPERAND_RESULT_CNT * INPUT_LEN) - 1) {
 					log.Println("WTF", firstPart, i, j)
 				}
 			}
 			if retList[firstPart] == nil {
 				continue
 			}
-			if retList[secondPart] == nil {
+			if list[secondPart] == nil {
 				continue
 			}
+			// Work one of the results of input X input against one of the inpuits
+			// The celver bit is making sure we don't allow secondPart to have been involved
+			// in the calculation of firstPart
 			currentNumberLoc = doCalcOn2(retList, NumCol{retList[firstPart], list[secondPart]}, currentNumberLoc)
 		}
 	}
@@ -91,7 +89,7 @@ func (foundValues *NumMap) make3To1bones(list NumCol, retList []*Number, current
 			}
 		}
 	}
-	return retList, currentNumberLoc
+	return retList
 }
 func doCalcOn2(retList []*Number, list NumCol, currentNumberLoc int) int {
 	a := list[0].Val
@@ -104,34 +102,30 @@ func doCalcOn2(retList []*Number, list NumCol, currentNumberLoc int) int {
 	aEqB := a == b
 	amb0 := ((a % b) == 0)
 	bma0 := ((b % a) == 0)
-	configure := func(inputA int, inputB []*Number, operation string, difficult int) *Number {
-		nm := new(Number)
-		nm.configure(inputA, inputB, operation, difficult)
-		return nm
-	}
 
-	retList[currentNumberLoc] = configure(a+b, list, "+", 1)
+	retList[currentNumberLoc] = NewNumber(a+b, list, "+", 1)
 	currentNumberLoc++
-	retList[currentNumberLoc] = configure(a*b, list, "*", 2)
+	retList[currentNumberLoc] = NewNumber(a*b, list, "*", 2)
 	currentNumberLoc++
 	if aEqB {
 		retList[currentNumberLoc] = nil
 	} else if aGtB {
-		retList[currentNumberLoc] = configure(a-b, list, "-", 1)
+		retList[currentNumberLoc] = NewNumber(a-b, list, "-", 1)
 	} else {
-		retList[currentNumberLoc] = configure(b-a, list, "--", 1)
+		retList[currentNumberLoc] = NewNumber(b-a, list, "--", 1)
 	}
 	currentNumberLoc++
-
-	if aGtB {
+	if aEqB {
+		retList[currentNumberLoc] = NewNumber(1, list, "/", 1)
+	} else if aGtB {
 		if amb0 {
-			retList[currentNumberLoc] = configure(a/b, list, "/", 3)
+			retList[currentNumberLoc] = NewNumber(a/b, list, "/", 3)
 		} else {
 			retList[currentNumberLoc] = nil
 		}
 	} else {
 		if bma0 {
-			retList[currentNumberLoc] = configure(b/a, list, "\\", 3)
+			retList[currentNumberLoc] = NewNumber(b/a, list, "\\", 3)
 		} else {
 			retList[currentNumberLoc] = nil
 		}
