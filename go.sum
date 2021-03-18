@@ -1,8 +1,12 @@
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
-github.com/cbehopkins/combination v0.0.0-20210316182303-854f0f7a4855 h1:OoJttKcQg8P+ypvAokuT1n0/m8g98SXl+OwKmghRERk=
-github.com/cbehopkins/combination v0.0.0-20210316182303-854f0f7a4855/go.mod h1:h54m5zz0HikvPZALQz99t9mo6RKE/8jxkJn63AFzTm8=
+github.com/cbehopkins/combination v0.0.0-20210317221423-ec301ab2dadf h1:Or5mSjEr9CTiCGeVeo64c2cyAIcJlRWr+UzZQ0jNI0U=
+github.com/cbehopkins/combination v0.0.0-20210317221423-ec301ab2dadf/go.mod h1:h54m5zz0HikvPZALQz99t9mo6RKE/8jxkJn63AFzTm8=
+github.com/cbehopkins/combination v0.0.0-20210318132752-83a95160f362 h1:W6PCP9xxeSZEhN9Tx9BzzTwZLSKd6Uud7120Ev+EiAQ=
+github.com/cbehopkins/combination v0.0.0-20210318132752-83a95160f362/go.mod h1:h54m5zz0HikvPZALQz99t9mo6RKE/8jxkJn63AFzTm8=
 github.com/cbehopkins/permutation v0.0.0-20190130092141-418a8aa8cc40 h1:TwpFqo0k0LdyfsgN1Z+TMh+usJK3TEwcgMt/G0ur3zw=
 github.com/cbehopkins/permutation v0.0.0-20190130092141-418a8aa8cc40/go.mod h1:iSFZrtOb96mkToYscD54Q1IoXZplW1i9Gm8eTQ1+1MQ=
+github.com/cbehopkins/permutation v0.0.0-20210305112446-f52a070de836 h1:dPEeo4VxkboFXBs+1b/mQoWsMa2l4L+Jqfs50DpC9nU=
+github.com/cbehopkins/permutation v0.0.0-20210305112446-f52a070de836/go.mod h1:mDiVCNp4W4P7aCyQwXN4hPsjD5BerigHHh5h9O0sbpg=
 github.com/davecgh/go-spew v0.0.0-20161028175848-04cdfd42973b/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
