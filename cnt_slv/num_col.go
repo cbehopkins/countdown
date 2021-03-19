@@ -35,7 +35,7 @@ func (nm *NumMap) NewNumCol(input []int) NumCol {
 
 	for _, v := range input {
 		a := NewNumber(v, emptyList, "I", 0)
-		nm.Add(v, a)
+		nm.Add(a)
 		list = append(list, a)
 	}
 	return list
@@ -46,7 +46,7 @@ func (nc *NumCol) AddNum(inputNum int, foundValues *NumMap) {
 	var emptyList NumCol
 
 	a := NewNumber(inputNum, emptyList, "I", 0)
-	foundValues.Add(inputNum, a)
+	foundValues.Add(a)
 	*nc = append(*nc, a)
 }
 

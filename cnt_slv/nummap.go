@@ -13,9 +13,7 @@ import (
 // to efficiently and concisely extract the needed data
 
 // NumMapAtom is the structure that holds the Number itself
-type NumMapAtom struct {
-	b *Number // The number
-}
+type NumMapAtom *Number
 
 // NumMap is the main map to a number and how we get there
 // This is the main structure the solver adds numbers to
@@ -131,12 +129,12 @@ func (nmp *NumMap) compare(can *NumMap) bool {
 
 // Add a number we have found
 // and how we found it
-func (nmp *NumMap) Add(a int, b *Number) {
-	if nmp.SelfTest && (a == 0 || b.Val == 0) {
+func (nmp *NumMap) Add(b *Number) {
+	if nmp.SelfTest && (b.Val == 0) {
 		fmt.Println("We should not add 0")
 	}
 
-	nmp.inputChannel <- NumMapAtom{b}
+	nmp.inputChannel <- NumMapAtom(b)
 }
 
 // addMany allows adding several number at once
@@ -150,11 +148,11 @@ func (nmp *NumMap) addMany(b ...*Number) {
 		if nmp.SelfTest && c.Val == 0 {
 			fmt.Println("We should not add many 0")
 		}
-		arr[i].b = c
+		arr[i] = c
 	}
 	if nmp.SelfTest {
 		for i, v := range arr {
-			if v.b != nil && v.b.Val == 0 {
+			if v != nil && v.Val == 0 {
 				fmt.Println("Bugger b:", i)
 			}
 		}
@@ -228,10 +226,10 @@ func (nmp *NumMap) addWorker() {
 			// Adding a number is an expensive task
 			// so we grab a lock, and do several at once
 			for _, number := range numberBlock {
-				if number.b == nil || number.b.Val == 0 {
+				if number == nil || number.Val == 0 {
 					continue
 				}
-				nmp.addItem(number.b, false)
+				nmp.addItem(number, false)
 			}
 			nmp.constLk.RUnlock()
 			nmp.mapLock.Unlock()
@@ -243,7 +241,7 @@ func (nmp *NumMap) addWorker() {
 			nmp.mapLock.Lock()
 			nmp.constLk.RLock()
 			// We use this when we create a lone number
-			nmp.addItem(number.b, false)
+			nmp.addItem(number, false)
 			nmp.constLk.RUnlock()
 			nmp.mapLock.Unlock()
 		}
