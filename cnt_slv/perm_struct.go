@@ -107,7 +107,7 @@ func runPermute(arrayIn NumCol, foundValues *NumMap, proofList chan SolLst) {
 	pstrct := newPermStruct(arrayIn, foundValues)
 	numWorkers := 8
 	pstrct.Workers(proofList, numWorkers)
-	foundValues.LastNumMap()
+	foundValues.lastNumMap()
 }
 func permuteN(arrayIn NumCol, foundValues *NumMap) chan SolLst {
 	returnProofs := make(chan SolLst, 16)

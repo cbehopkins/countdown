@@ -253,7 +253,7 @@ func TestReduction(t *testing.T) {
 	mwg.Wait()
 	fmt.Println("Everything should have finished by now, start printing proofs")
 	// So by this point found_values* and proof_list* should both have the same contents - if not in the same order
-	if !foundValues1.Compare(foundValues0) {
+	if !foundValues1.compare(foundValues0) {
 		fmt.Println("The new FV were different")
 		t.Fail()
 	}
@@ -266,9 +266,9 @@ func TestReduction(t *testing.T) {
 	foundValues2.UseMult = true
 
 	foundValues2.addSol(proofList0, false)
-	foundValues2.LastNumMap()
+	foundValues2.lastNumMap()
 
-	if !foundValues2.Compare(foundValues0) {
+	if !foundValues2.compare(foundValues0) {
 		fmt.Println("The new FV were different")
 		fmt.Println(foundValues2.Numbers())
 		t.Fail()

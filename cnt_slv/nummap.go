@@ -14,8 +14,8 @@ import (
 
 // NumMapAtom is the structure that holds the Number itself
 type NumMapAtom struct {
-	a int // Document these fields when you understand them
-	b *Number
+	a int     // Always == b.Val
+	b *Number // The number
 }
 
 // NumMap is the main map to a number and how we get there
@@ -109,8 +109,8 @@ func (nmp *NumMap) Numbers() []*Number {
 	return retList
 }
 
-// Compare two number maps return true if they contain the same numbers
-func (nmp *NumMap) Compare(can *NumMap) bool {
+// compare two number maps return true if they contain the same numbers
+func (nmp *NumMap) compare(can *NumMap) bool {
 	for _, key := range can.Keys() {
 		_, ok := nmp.nmp[key]
 		if !ok {
@@ -136,10 +136,8 @@ func (nmp *NumMap) Add(a int, b *Number) {
 	if nmp.SelfTest && (a == 0 || b.Val == 0) {
 		fmt.Println("We should not add 0")
 	}
-	var atomic NumMapAtom
-	atomic.a = b.Val
-	atomic.b = b
-	nmp.inputChannel <- atomic
+
+	nmp.inputChannel <- NumMapAtom{b.Val, b}
 }
 
 // addMany allows adding several number at once
@@ -188,21 +186,6 @@ func (nmp *NumMap) addSol(a SolLst, report bool) {
 	}
 	nmp.constLk.RUnlock()
 	nmp.mapLock.Unlock()
-}
-
-// Merge allows you to merge two number maps together
-// This is useful for parallel workers
-func (nmp *NumMap) Merge(a *NumMap, report bool) {
-	a.mapLock.Lock()
-	tmpCol := make(NumCol, len(a.nmp))
-	i := 0
-	for _, v := range a.nmp {
-		tmpCol[i] = v
-		i++
-	}
-	a.mapLock.Unlock()
-	tmpSol := SolLst{tmpCol}
-	nmp.addSol(tmpSol, report)
 }
 
 func (nmp *NumMap) addItem(value int, stct *Number, report bool) {
@@ -271,9 +254,9 @@ func (nmp *NumMap) addWorker() {
 	waiter.Wait()
 }
 
-// LastNumMap says we have done adding numbers
+// lastNumMap says we have done adding numbers
 // Should be internal use only - FIXME
-func (nmp *NumMap) LastNumMap() {
+func (nmp *NumMap) lastNumMap() {
 	close(nmp.inputChannelArray)
 	close(nmp.inputChannel)
 }
