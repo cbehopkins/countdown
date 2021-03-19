@@ -14,7 +14,6 @@ import (
 
 // NumMapAtom is the structure that holds the Number itself
 type NumMapAtom struct {
-	a int     // Always == b.Val
 	b *Number // The number
 }
 
@@ -137,7 +136,7 @@ func (nmp *NumMap) Add(a int, b *Number) {
 		fmt.Println("We should not add 0")
 	}
 
-	nmp.inputChannel <- NumMapAtom{b.Val, b}
+	nmp.inputChannel <- NumMapAtom{b}
 }
 
 // addMany allows adding several number at once
@@ -146,18 +145,16 @@ func (nmp *NumMap) addMany(b ...*Number) {
 	arr := make([]NumMapAtom, len(b))
 	for i, c := range b {
 		if c == nil {
-			arr[i].a = 0
 			continue
 		}
 		if nmp.SelfTest && c.Val == 0 {
 			fmt.Println("We should not add many 0")
 		}
-		arr[i].a = c.Val
 		arr[i].b = c
 	}
 	if nmp.SelfTest {
 		for i, v := range arr {
-			if v.a != 0 && v.b.Val == 0 {
+			if v.b != nil && v.b.Val == 0 {
 				fmt.Println("Bugger b:", i)
 			}
 		}
@@ -181,15 +178,16 @@ func (nmp *NumMap) addSol(a SolLst, report bool) {
 			}
 			//fmt.Println("Ading Value:", c.Val)
 
-			nmp.addItem(c.Val, c, false)
+			nmp.addItem(c, false)
 		}
 	}
 	nmp.constLk.RUnlock()
 	nmp.mapLock.Unlock()
 }
 
-func (nmp *NumMap) addItem(value int, stct *Number, report bool) {
+func (nmp *NumMap) addItem(stct *Number, report bool) {
 	// The lock on the map structure must be grabbed outside
+	value := stct.Val
 	if nmp.SelfTest && value == 0 {
 		fmt.Println("We should not add 0")
 	}
@@ -230,10 +228,10 @@ func (nmp *NumMap) addWorker() {
 			// Adding a number is an expensive task
 			// so we grab a lock, and do several at once
 			for _, number := range numberBlock {
-				if number.a == 0 {
+				if number.b == nil || number.b.Val == 0 {
 					continue
 				}
-				nmp.addItem(number.a, number.b, false)
+				nmp.addItem(number.b, false)
 			}
 			nmp.constLk.RUnlock()
 			nmp.mapLock.Unlock()
@@ -245,7 +243,7 @@ func (nmp *NumMap) addWorker() {
 			nmp.mapLock.Lock()
 			nmp.constLk.RLock()
 			// We use this when we create a lone number
-			nmp.addItem(number.a, number.b, false)
+			nmp.addItem(number.b, false)
 			nmp.constLk.RUnlock()
 			nmp.mapLock.Unlock()
 		}
