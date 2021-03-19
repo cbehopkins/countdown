@@ -53,7 +53,6 @@ func TestOne(t *testing.T) {
 
 	foundValues.SelfTest = true
 	foundValues.UseMult = true
-	foundValues.PermuteMode = LonMap
 	bob.AddNum(8, foundValues)
 	bob.AddNum(9, foundValues)
 	bob.AddNum(10, foundValues)
@@ -97,7 +96,6 @@ func TestMany(t *testing.T) {
 		foundValues := NewNumMap() //pass it the proof list so it can auto-check for validity at the end
 		foundValues.SelfTest = true
 		foundValues.UseMult = true
-		foundValues.PermuteMode = LonMap
 		for _, itm := range item.Selected {
 			bob.AddNum(itm, foundValues)
 		}
@@ -146,8 +144,6 @@ func TestFail(t *testing.T) {
 		foundValues := NewNumMap() //pass it the proof list so it can auto-check for validity at the end
 		foundValues.SelfTest = false
 		foundValues.UseMult = true
-		// Other modes use too much memory
-		foundValues.PermuteMode = LonMap
 		for _, itm := range item.Selected {
 			bob.AddNum(itm, foundValues)
 		}
@@ -322,19 +318,6 @@ func BenchmarkWorknMulti(b *testing.B) {
 		runString := runner.desc
 		b.Run(runString, runFunc)
 	}
-}
-func ModeString(v int) string {
-	switch v {
-	case LonMap:
-		return "LonMap"
-	case ParMap:
-		return "ParMap"
-	case NetMap:
-		return "NetMap"
-	default:
-		return "unknown"
-	}
-
 }
 
 // func BenchmarkModes(b *testing.B) {

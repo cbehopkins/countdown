@@ -21,16 +21,12 @@ func main() {
 	var dmflg = flag.Bool("dism", false, "Disable nultiplication")
 	var stflg = flag.Bool("selft", false, "Check our own internals as we go")
 	var srflg = flag.Bool("seeks", false, "Seek the shortest proof, as opposed to the quickest one to find")
-	var ntflg = flag.Bool("net", false, "Attempt to use network mode")
 	flag.Parse()
 
 	foundValues := cntslv.NewNumMap()
 	// Global control flags default to test mode
 	foundValues.SelfTest = *stflg
 	foundValues.SeekShort = *srflg
-	if *ntflg {
-		foundValues.PermuteMode = cntslv.NetMap
-	}
 	if *tgflg <= 0 {
 
 		log.Fatal("No target specified")
@@ -57,7 +53,6 @@ func main() {
 	foundValues = cntslv.NewNumMap()
 	//found_values.SelfTest = true
 	// foundValues.UseMult = true
-	foundValues.PermuteMode = cntslv.LonMap
 	// foundValues.SeekShort = *srflg
 	returnProofs := foundValues.CountHelper(target, sources)
 	for range returnProofs {
