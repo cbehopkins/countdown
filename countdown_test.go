@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"math/rand"
 	"strconv"
@@ -94,11 +95,15 @@ func allN(input []howwy) howwy {
 	copy(array[1:], input[2:])
 	return allN(array)
 }
-func singleHowwyTst(candidateArray []int, t *testing.T) {
-	// t.Log("Candidate Array:", candidateArray)
-	for i := 0; i < 2; i++ {
+func singleHowwyTst(candidateArray []int, t *testing.T, repeat int) {
+	prevTarget := -1
+	for i := 0; i < repeat; i++ {
 		target := allN(newHowwyArray(candidateArray))
-		// t.Log("Target:", target)
+		if target.Val == prevTarget {
+			i--
+			continue
+		}
+		prevTarget = target.Val
 		if !runArray(target.Val, candidateArray) {
 			t.Log("Candidate Array:", candidateArray)
 			t.Log("Target:", target)
@@ -114,15 +119,16 @@ func runArray(target int, candidateArray []int) bool {
 	foundValues.UseMult = true
 
 	tmpChan := foundValues.CountHelper(target, candidateArray)
-	for tmp := range tmpChan {
-		if tmp.Exists(target) {
-			return true
-		}
+	for _ = range tmpChan {
 	}
-	return foundValues.Solved()
+	if !foundValues.Solved() {
+		fmt.Println(foundValues.Numbers())
+		return false
+	}
+	return true
 }
-func TestAllCombinations(t *testing.T) {
-	// t.Skip()
+func TestAllCombinationsExhaustive(t *testing.T) {
+	t.Skip()
 	bigNumbersSet := []int{25, 50, 75, 100}
 	smallNumbersSet := []int{1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10}
 
@@ -147,7 +153,7 @@ func TestAllCombinations(t *testing.T) {
 				i++
 				copy(dstArray[:outerLength], dstArrayOuter)
 				copy(dstArray[outerLength:], dstArrayInner)
-				singleHowwyTst(dstArray, t)
+				singleHowwyTst(dstArray, t, 2)
 				cnt++
 				if cnt >= 128 {
 					t.Log("Done 128", i, dstArray)
@@ -156,5 +162,26 @@ func TestAllCombinations(t *testing.T) {
 			}
 			break
 		}
+	}
+}
+func TestAllCombinationsRand(t *testing.T) {
+	bigNumbersSet := []int{25, 50, 75, 100}
+	smallNumbersSet := []int{1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10}
+	combinedNumbersSet := append(bigNumbersSet, smallNumbersSet...)
+	dstArray := make([]int, 6)
+
+	copyFunc := func(i, j int) {
+		dstArray[i] = combinedNumbersSet[j]
+	}
+
+	todoChan := combination.RandomToDoSource((1 << 11), len(combinedNumbersSet), 6)
+	gcc := combination.NewGenericFromChan(todoChan, copyFunc)
+	i := 0
+	for err := gcc.Next(); err == nil; err = gcc.Next() {
+		i++
+		if i%16 == 0 {
+			fmt.Println(dstArray)
+		}
+		singleHowwyTst(dstArray, t, 16)
 	}
 }

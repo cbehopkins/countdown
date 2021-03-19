@@ -29,7 +29,6 @@ type NumMap struct {
 	// we can process them in batches
 	inputChannel      chan NumMapAtom
 	inputChannelArray chan []NumMapAtom
-	doneChannel       chan bool
 
 	// The constants are locked separately from the main stuff
 	// This should be refactored to be a separate struct cause that's &^%$
@@ -65,17 +64,22 @@ func NewNumMap() *NumMap {
 	p.solved = new(bool)
 	p.inputChannel = make(chan NumMapAtom, 1000)
 	p.inputChannelArray = make(chan []NumMapAtom, 100)
-	p.doneChannel = make(chan bool)
-	p.TargetSet = false
 	go p.addWorker()
 	return p
 }
 
 // Solved returns true if the Target has been found
 func (nmp *NumMap) Solved() bool {
-	nmp.constLk.RLock()
-	defer nmp.constLk.RUnlock()
-	return *nmp.solved
+	if nmp.SeekShort {
+		nmp.constLk.RLock()
+		defer nmp.constLk.RUnlock()
+		return *nmp.solved
+	}
+	// FIXME This is messy - why not just always use the above?
+	nmp.mapLock.RLock()
+	defer nmp.mapLock.RUnlock()
+	_, ok := nmp.nmp[nmp.Target]
+	return ok
 }
 
 // Keys returns the integers that form the numbers
@@ -144,23 +148,22 @@ func (nmp *NumMap) addMany(b ...*Number) {
 	arr := make([]NumMapAtom, len(b))
 	for i, c := range b {
 		if c == nil {
+			arr[i].a = 0
 			continue
 		}
 		if nmp.SelfTest && c.Val == 0 {
 			fmt.Println("We should not add many 0")
 		}
-		var atomic NumMapAtom
-		atomic.a = c.Val
-		atomic.b = c
-		arr[i] = atomic
+		arr[i].a = c.Val
+		arr[i].b = c
 	}
-	// if nmp.SelfTest {
-	// 	for i, v := range arr {
-	// 		if v.a == 0 || v.b.Val == 0 {
-	// 			fmt.Println("Bugger:", i)
-	// 		}
-	// 	}
-	// }
+	if nmp.SelfTest {
+		for i, v := range arr {
+			if v.a != 0 && v.b.Val == 0 {
+				fmt.Println("Bugger b:", i)
+			}
+		}
+	}
 	nmp.inputChannelArray <- arr
 }
 
@@ -209,7 +212,6 @@ func (nmp *NumMap) addItem(value int, stct *Number, report bool) {
 	}
 	retr, ok := nmp.nmp[value]
 	if !ok {
-		//item.nmp[value] = stct
 		if nmp.TargetSet {
 			if value == nmp.Target {
 				// Store the solution we found
@@ -267,7 +269,6 @@ func (nmp *NumMap) addWorker() {
 		waiter.Done()
 	}()
 	waiter.Wait()
-	close(nmp.doneChannel)
 }
 
 // LastNumMap says we have done adding numbers
@@ -275,7 +276,6 @@ func (nmp *NumMap) addWorker() {
 func (nmp *NumMap) LastNumMap() {
 	close(nmp.inputChannelArray)
 	close(nmp.inputChannel)
-	<-nmp.doneChannel // FIXME move to closing the channel instead
 }
 
 // SetTarget for the search

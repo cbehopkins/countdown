@@ -31,7 +31,6 @@ func workN(arrayIn NumCol, foundValues *NumMap) SolLst {
 		return SolLst{}
 	}
 	if lenArrayIn <= 1 {
-		//ret_list = append(ret_list, &array_in)
 		return SolLst{arrayIn}
 	} else if lenArrayIn == 2 {
 		var tmpList NumCol

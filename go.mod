@@ -8,5 +8,5 @@ require (
 	github.com/pkg/profile v1.5.0
 )
 
-//replace github.com/cbehopkins/combination => ../combination
-//replace github.com/cbehopkins/permutation => ../permutation
+replace github.com/cbehopkins/combination => ../combination
+replace github.com/cbehopkins/permutation => ../permutation
