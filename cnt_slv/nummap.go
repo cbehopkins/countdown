@@ -12,9 +12,6 @@ import (
 // There are also a bunch of helper functions surrounding the map here
 // to efficiently and concisely extract the needed data
 
-// NumMapAtom is the structure that holds the Number itself
-type NumMapAtom *Number
-
 // NumMap is the main map to a number and how we get there
 // This is the main structure the solver adds numbers to
 type NumMap struct {
@@ -24,8 +21,8 @@ type NumMap struct {
 	Target    int
 	// When there are numbers to add, we queue them on the channel so
 	// we can process them in batches
-	inputChannel      chan NumMapAtom
-	inputChannelArray chan []NumMapAtom
+	inputChannel      chan *Number
+	inputChannelArray chan []*Number
 
 	// The constants are locked separately from the main stuff
 	// This should be refactored to be a separate struct cause that's &^%$
@@ -59,8 +56,8 @@ func NewNumMap() *NumMap {
 	p := new(NumMap)
 	p.nmp = make(map[int]*Number)
 	p.solved = new(bool)
-	p.inputChannel = make(chan NumMapAtom, 1000)
-	p.inputChannelArray = make(chan []NumMapAtom, 100)
+	p.inputChannel = make(chan *Number, 1000)
+	p.inputChannelArray = make(chan []*Number, 100)
 	go p.addWorker()
 	return p
 }
@@ -134,13 +131,13 @@ func (nmp *NumMap) Add(b *Number) {
 		fmt.Println("We should not add 0")
 	}
 
-	nmp.inputChannel <- NumMapAtom(b)
+	nmp.inputChannel <- b
 }
 
 // addMany allows adding several number at once
 // It only takes a single lock to do a number of items
 func (nmp *NumMap) addMany(b ...*Number) {
-	arr := make([]NumMapAtom, len(b))
+	arr := make([]*Number, len(b))
 	for i, c := range b {
 		if c == nil {
 			continue

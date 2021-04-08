@@ -52,10 +52,10 @@ func TestWeirdWork(t *testing.T) {
 				if mk327.Equal(unitB) {
 					tmp400 := workN(unitA, foundValues)
 					tmp327 := workN(unitB, foundValues)
-					if !tmp400.Exists(400) {
+					if !tmp400.exists(400) {
 						return false
 					}
-					if !tmp327.Exists(327) {
+					if !tmp327.exists(327) {
 						return false
 					}
 					return true
@@ -96,7 +96,7 @@ func TestWorkn(t *testing.T) {
 	target := 727
 	candidateArray := []int{50, 9, 1, 100, 9, 3}
 	tstWorker(target, candidateArray, fun)
-	if !tmp.Exists(target) {
+	if !tmp.exists(target) {
 		log.Fatal("Couldn't find", target)
 	}
 
@@ -113,7 +113,7 @@ func TestPermute(t *testing.T) {
 	var found bool
 	var unfound bool
 	for tmp := range tmpChan {
-		if !tmp.Exists(target) {
+		if !tmp.exists(target) {
 			unfound = true
 		} else {
 			found = true

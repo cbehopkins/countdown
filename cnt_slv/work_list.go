@@ -28,7 +28,7 @@ func (wl wrkLst) procWorkSelf(foundValues *NumMap) SolLst {
 
 		if foundValues.SelfTest {
 			// Sanity check for programming errors
-			workUnitLength := workUnit.Len()
+			workUnitLength := len(workUnit)
 			if workUnitLength != 2 {
 				log.Println(wl)
 				log.Fatalf("Invalid work unit length, %d", workUnitLength)

@@ -40,7 +40,7 @@ func (g *gimmie) reset() {
 }
 
 func (g *gimmie) next() (result *Number, err error) {
-	for ; g.outer < g.solList.Len(); g.outer++ {
+	for ; g.outer < len(g.solList); g.outer++ {
 		inLst := g.solList[g.outer]
 		for g.inner < inLst.Len() {
 			result = inLst[g.inner]

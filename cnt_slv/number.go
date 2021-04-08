@@ -324,3 +324,6 @@ func (nm *Number) String() string {
 	}
 	return proof
 }
+func (n *Number) render() string {
+	return "Value " + strconv.Itoa(n.Val) + ", = " + n.String()
+}
